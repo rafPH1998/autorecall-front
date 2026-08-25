@@ -45,9 +45,9 @@ function insertVariable(variable: string) {
   message.value += ` ${variable}`;
 }
 
-function registerContact(customer: Customer) {
+async function registerContact(customer: Customer) {
   const rendered = renderMessage(customer);
-  store.addContact({
+  await store.addContact({
     customerId: customer.id,
     date: new Date().toLocaleDateString('pt-BR'),
     channel: 'WhatsApp',
@@ -57,19 +57,19 @@ function registerContact(customer: Customer) {
   return rendered;
 }
 
-function send(customer: Customer) {
-  const rendered = registerContact(customer);
+async function send(customer: Customer) {
+  const rendered = await registerContact(customer);
   window.open(`https://wa.me/${customer.whatsapp}?text=${encodeURIComponent(rendered)}`, '_blank', 'noopener,noreferrer');
 }
 
-// Navegadores bloqueiam várias janelas por clique, então o envio em massa abre
-// somente a primeira conversa e registra as demais no histórico.
-function sendSelected() {
+async function sendSelected() {
   const [first, ...rest] = selectedCustomers.value;
   if (!first) return;
 
-  send(first);
-  rest.forEach((customer) => registerContact(customer));
+  await send(first);
+  for (const customer of rest) {
+    await registerContact(customer);
+  }
 
   toast.add({
     severity: 'success',

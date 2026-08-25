@@ -1,11 +1,17 @@
 <script setup>
 import { useLayout } from '@/layout/composables/layout';
-import { computed } from 'vue';
+import { useAppStore } from '@/stores/app';
+import { computed, onMounted } from 'vue';
 import AppFooter from './AppFooter.vue';
 import AppSidebar from './AppSidebar.vue';
 import AppTopbar from './AppTopbar.vue';
 
 const { layoutConfig, layoutState, hideMobileMenu } = useLayout();
+const appStore = useAppStore();
+
+onMounted(() => {
+    if (!appStore.ready) appStore.bootstrap();
+});
 
 const containerClass = computed(() => {
     return {
@@ -24,7 +30,8 @@ const containerClass = computed(() => {
         <AppSidebar />
         <div class="layout-main-container">
             <div class="layout-main">
-                <router-view />
+                <div v-if="appStore.loading && !appStore.ready" class="card text-center py-8">Carregando dados da oficina...</div>
+                <router-view v-else />
             </div>
             <AppFooter />
         </div>

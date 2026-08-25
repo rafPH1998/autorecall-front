@@ -7,14 +7,15 @@ import ToastService from 'primevue/toastservice';
 import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
+import { useAuthStore } from './stores/auth';
 
 import '@/assets/tailwind.css';
 import '@/assets/styles.scss';
 
 const app = createApp(App);
+const pinia = createPinia();
 
-app.use(createPinia());
-app.use(router);
+app.use(pinia);
 app.use(PrimeVue, {
   theme: {
     preset: Aura,
@@ -27,4 +28,8 @@ app.use(ToastService);
 app.use(ConfirmationService);
 app.directive('styleclass', StyleClass);
 
-app.mount('#app');
+const auth = useAuthStore();
+auth.hydrate().finally(() => {
+  app.use(router);
+  app.mount('#app');
+});

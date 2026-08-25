@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
+import { useAppStore } from '@/stores/app';
 import { useAuthStore } from '@/stores/auth';
 import { computed, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -33,6 +34,7 @@ async function onSubmit() {
   loading.value = true;
   try {
     await authStore.login(email.value.trim(), password.value);
+    await useAppStore().bootstrap();
     await router.push({ name: 'dashboard' });
   } catch (error) {
     errorMessage.value = error instanceof Error ? error.message : 'Não foi possível entrar. Tente novamente.';
@@ -58,7 +60,7 @@ async function onSubmit() {
               />
             </svg>
             <div class="text-surface-900 dark:text-surface-0 text-3xl font-medium mb-4">AutoRecall</div>
-            <span class="text-muted-color font-medium">Entre para continuar</span>
+            <span class="text-muted-color font-medium">Use rafael@autocenter.com.br / 123456</span>
           </div>
 
           <form class="flex flex-col gap-2" @submit.prevent="onSubmit">

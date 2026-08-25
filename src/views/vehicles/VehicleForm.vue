@@ -27,12 +27,16 @@ const form = reactive<Omit<Vehicle, 'id'>>({
 });
 const valid = computed(() => Boolean(form.customerId && form.plate.trim() && form.brand.trim() && form.model.trim() && form.year > 1900 && form.mileage >= 0));
 
-function save() {
+async function save() {
   submitted.value = true;
   if (!valid.value) return;
-  store.upsertVehicle({ ...form, plate: form.plate.toUpperCase(), id: id.value });
-  toast.add({ severity: 'success', summary: 'Veículo salvo', detail: 'Cadastro atualizado com sucesso.', life: 3000 });
-  router.push({ name: 'vehicles' });
+  try {
+    await store.upsertVehicle({ ...form, plate: form.plate.toUpperCase(), id: id.value });
+    toast.add({ severity: 'success', summary: 'Veículo salvo', detail: 'Cadastro atualizado com sucesso.', life: 3000 });
+    router.push({ name: 'vehicles' });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro ao salvar', detail: error instanceof Error ? error.message : 'Tente novamente.', life: 4000 });
+  }
 }
 </script>
 

@@ -10,12 +10,7 @@ const store = useAppStore();
 const toast = useToast();
 const workshop = reactive<Workshop>({ ...store.workshop });
 const users = ref<WorkshopUser[]>(structuredClone(store.workshopUsers));
-const preferences = reactive({
-  maintenanceAlerts: true,
-  contactReminders: true,
-  weeklyReport: false,
-  defaultReminderDays: 15,
-});
+const preferences = reactive({ ...store.preferences });
 const saving = ref(false);
 
 const roles: WorkshopUser['role'][] = ['Administrador', 'Atendente', 'Mecânico'];
@@ -34,14 +29,26 @@ function removeUser(id: number) {
   users.value = users.value.filter((user) => user.id !== id);
 }
 
-function save() {
+async function save() {
   saving.value = true;
-  window.setTimeout(() => {
-    store.updateWorkshop({ ...workshop });
-    store.workshopUsers.splice(0, store.workshopUsers.length, ...structuredClone(users.value));
-    saving.value = false;
+  try {
+    await store.saveSettings({
+      workshop: { ...workshop },
+      users: users.value
+        .filter((user) => user.name.trim() && user.email.trim())
+        .map((user) => ({
+          ...user,
+          id: user.id > 0 && user.id < 1_000_000_000_000 ? user.id : undefined,
+        })),
+      preferences: { ...preferences },
+    });
+    users.value = structuredClone(store.workshopUsers);
     toast.add({ severity: 'success', summary: 'Configurações salvas', detail: 'As preferências da oficina foram atualizadas.', life: 3000 });
-  }, 450);
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro ao salvar', detail: error instanceof Error ? error.message : 'Tente novamente.', life: 4000 });
+  } finally {
+    saving.value = false;
+  }
 }
 </script>
 

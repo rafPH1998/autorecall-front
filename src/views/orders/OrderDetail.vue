@@ -25,9 +25,13 @@ function finish() {
     icon: 'pi pi-check-circle',
     rejectLabel: 'Cancelar',
     acceptLabel: 'Finalizar',
-    accept: () => {
-      store.finishOrder(id.value);
-      toast.add({ severity: 'success', summary: 'OS finalizada', detail: 'O atendimento foi concluído.', life: 3000 });
+    accept: async () => {
+      try {
+        await store.finishOrder(id.value);
+        toast.add({ severity: 'success', summary: 'OS finalizada', detail: 'O atendimento foi concluído.', life: 3000 });
+      } catch (error) {
+        toast.add({ severity: 'error', summary: 'Erro ao finalizar', detail: error instanceof Error ? error.message : 'Tente novamente.', life: 4000 });
+      }
     },
   });
 }

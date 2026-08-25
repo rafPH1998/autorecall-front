@@ -1,28 +1,52 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
+import { api, getToken, setToken } from '@/services/api';
 
-const SESSION_KEY = 'autorecall-session';
+export interface AuthUser {
+  id: number;
+  name: string;
+  email: string;
+  role: string;
+  active: boolean;
+}
+
+const SESSION_FLAG = 'autorecall-session';
 
 export const useAuthStore = defineStore('auth', () => {
-  const user = ref<{ name: string; email: string } | null>(
-    localStorage.getItem(SESSION_KEY)
-      ? { name: 'Rafael Pereira', email: 'rafael@autocenter.com.br' }
-      : null,
-  );
+  const user = ref<AuthUser | null>(null);
+  const isAuthenticated = computed(() => Boolean(user.value && getToken()));
 
-  const isAuthenticated = computed(() => Boolean(user.value));
+  async function hydrate() {
+    if (!getToken()) {
+      user.value = null;
+      localStorage.removeItem(SESSION_FLAG);
+      return;
+    }
+    try {
+      user.value = await api<AuthUser>('/auth/me');
+      localStorage.setItem(SESSION_FLAG, '1');
+    } catch {
+      setToken(null);
+      user.value = null;
+      localStorage.removeItem(SESSION_FLAG);
+    }
+  }
 
   async function login(email: string, password: string) {
-    await new Promise((resolve) => window.setTimeout(resolve, 500));
-    if (!email || password.length < 6) throw new Error('Informe um e-mail e uma senha com pelo menos 6 caracteres.');
-    user.value = { name: 'Rafael Pereira', email };
-    localStorage.setItem(SESSION_KEY, 'mock-token');
+    const result = await api<{ token: string; user: AuthUser }>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+    });
+    setToken(result.token);
+    user.value = result.user;
+    localStorage.setItem(SESSION_FLAG, '1');
   }
 
   function logout() {
     user.value = null;
-    localStorage.removeItem(SESSION_KEY);
+    setToken(null);
+    localStorage.removeItem(SESSION_FLAG);
   }
 
-  return { user, isAuthenticated, login, logout };
+  return { user, isAuthenticated, hydrate, login, logout };
 });

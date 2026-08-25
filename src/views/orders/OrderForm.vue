@@ -39,23 +39,22 @@ function updateItem(item: ServiceOrderItem) {
   }
 }
 
-function save() {
+async function save() {
   submitted.value = true;
   if (!valid.value || !customerId.value || !vehicleId.value) return;
-  const next = Math.max(0, ...store.orders.map((order) => Number(order.number.split('-').at(-1)))) + 1;
-  store.addOrder({
-    number: `OS-${new Date().getFullYear()}-${String(next).padStart(4, '0')}`,
-    customerId: customerId.value,
-    vehicleId: vehicleId.value,
-    date: new Date().toLocaleDateString('pt-BR'),
-    mileage: mileage.value,
-    status: 'Aberta',
-    notes: notes.value,
-    items: items.map((item) => ({ ...item })),
-    total: total.value,
-  });
-  toast.add({ severity: 'success', summary: 'Ordem criada', detail: 'A ordem de serviço foi aberta.', life: 3000 });
-  router.push({ name: 'orders' });
+  try {
+    await store.addOrder({
+      customerId: customerId.value,
+      vehicleId: vehicleId.value,
+      mileage: mileage.value,
+      notes: notes.value,
+      items: items.map((item) => ({ ...item })),
+    });
+    toast.add({ severity: 'success', summary: 'Ordem criada', detail: 'A ordem de serviço foi aberta.', life: 3000 });
+    router.push({ name: 'orders' });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro ao criar OS', detail: error instanceof Error ? error.message : 'Tente novamente.', life: 4000 });
+  }
 }
 </script>
 

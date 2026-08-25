@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import FloatingConfigurator from '@/components/FloatingConfigurator.vue';
+import { api } from '@/services/api';
 import { computed, ref } from 'vue';
 
 const email = ref('');
@@ -22,9 +23,14 @@ async function onSubmit() {
   if (emailInvalid.value) return;
 
   loading.value = true;
-  await new Promise((resolve) => window.setTimeout(resolve, 500));
-  loading.value = false;
-  success.value = true;
+  try {
+    await api('/auth/forgot-password', { method: 'POST', body: JSON.stringify({ email: email.value.trim() }) });
+    success.value = true;
+  } catch (error) {
+    errorMessage.value = error instanceof Error ? error.message : 'Não foi possível enviar a recuperação.';
+  } finally {
+    loading.value = false;
+  }
 }
 </script>
 

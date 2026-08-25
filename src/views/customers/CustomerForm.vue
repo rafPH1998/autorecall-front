@@ -26,12 +26,16 @@ const form = reactive<Omit<Customer, 'id'>>({
 const emailValid = computed(() => !form.email || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.email));
 const valid = computed(() => Boolean(form.name.trim() && form.phone.trim() && form.document.trim() && emailValid.value));
 
-function save() {
+async function save() {
   submitted.value = true;
   if (!valid.value) return;
-  store.upsertCustomer({ ...form, id: id.value });
-  toast.add({ severity: 'success', summary: 'Cliente salvo', detail: 'Os dados foram atualizados com sucesso.', life: 3000 });
-  router.push({ name: 'customers' });
+  try {
+    await store.upsertCustomer({ ...form, id: id.value });
+    toast.add({ severity: 'success', summary: 'Cliente salvo', detail: 'Os dados foram atualizados com sucesso.', life: 3000 });
+    router.push({ name: 'customers' });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro ao salvar', detail: error instanceof Error ? error.message : 'Tente novamente.', life: 4000 });
+  }
 }
 </script>
 

@@ -23,12 +23,16 @@ const form = reactive<Omit<Service, 'id'>>({
 });
 const valid = computed(() => Boolean(form.name.trim() && form.description.trim() && form.price >= 0));
 
-function save() {
+async function save() {
   submitted.value = true;
   if (!valid.value) return;
-  store.upsertService({ ...form, id: id.value });
-  toast.add({ severity: 'success', summary: 'Serviço salvo', detail: 'O catálogo foi atualizado.', life: 3000 });
-  router.push({ name: 'services' });
+  try {
+    await store.upsertService({ ...form, id: id.value });
+    toast.add({ severity: 'success', summary: 'Serviço salvo', detail: 'O catálogo foi atualizado.', life: 3000 });
+    router.push({ name: 'services' });
+  } catch (error) {
+    toast.add({ severity: 'error', summary: 'Erro ao salvar', detail: error instanceof Error ? error.message : 'Tente novamente.', life: 4000 });
+  }
 }
 </script>
 
