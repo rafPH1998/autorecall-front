@@ -7,12 +7,31 @@ const model = ref([
     label: 'Início',
     items: [
       { label: 'Dashboard', icon: 'pi pi-fw pi-home', to: '/' },
-      { label: 'Usuários', icon: 'pi pi-fw pi-users', to: '/users' },
+      { label: 'Clientes', icon: 'pi pi-fw pi-users', to: '/customers' },
+      { label: 'Veículos', icon: 'pi pi-fw pi-car', to: '/vehicles' },
     ],
   },
   {
-    label: 'Conta',
-    items: [{ label: 'Login', icon: 'pi pi-fw pi-sign-in', to: '/auth/login' }],
+    label: 'Operação',
+    items: [
+      { label: 'Ordens de serviço', icon: 'pi pi-fw pi-wrench', to: '/orders' },
+      { label: 'Catálogo de serviços', icon: 'pi pi-fw pi-list-check', to: '/services' },
+      { label: 'Manutenções', icon: 'pi pi-fw pi-calendar-clock', to: '/maintenance' },
+    ],
+  },
+  {
+    label: 'Relacionamento',
+    items: [
+      { label: 'Contatos e campanhas', icon: 'pi pi-fw pi-whatsapp', to: '/contacts' },
+      { label: 'Notificações', icon: 'pi pi-fw pi-bell', to: '/notifications' },
+      { label: 'Relatórios', icon: 'pi pi-fw pi-chart-bar', to: '/reports' },
+    ],
+  },
+  {
+    label: 'Administração',
+    items: [
+      { label: 'Configurações', icon: 'pi pi-fw pi-cog', to: '/settings' },
+    ],
   },
 ]);
 </script>

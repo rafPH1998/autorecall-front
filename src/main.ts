@@ -4,6 +4,7 @@ import PrimeVue from 'primevue/config';
 import ConfirmationService from 'primevue/confirmationservice';
 import StyleClass from 'primevue/styleclass';
 import ToastService from 'primevue/toastservice';
+import { createPinia } from 'pinia';
 import App from './App.vue';
 import router from './router';
 
@@ -12,6 +13,7 @@ import '@/assets/styles.scss';
 
 const app = createApp(App);
 
+app.use(createPinia());
 app.use(router);
 app.use(PrimeVue, {
   theme: {

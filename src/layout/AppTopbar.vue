@@ -1,8 +1,21 @@
-<script setup>
+<script setup lang="ts">
 import { useLayout } from '@/layout/composables/layout';
+import { useAppStore } from '@/stores/app';
+import { useAuthStore } from '@/stores/auth';
+import { computed } from 'vue';
+import { useRouter } from 'vue-router';
 import AppConfigurator from './AppConfigurator.vue';
 
 const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
+const appStore = useAppStore();
+const authStore = useAuthStore();
+const router = useRouter();
+const unread = computed(() => appStore.notifications.filter((item) => !item.read).length);
+
+function logout() {
+    authStore.logout();
+    router.push('/auth/login');
+}
 </script>
 
 <template>
@@ -60,17 +73,17 @@ const { toggleMenu, toggleDarkMode, isDarkTheme } = useLayout();
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-calendar"></i>
-                        <span>Calendar</span>
+                    <button type="button" class="layout-topbar-action" @click="router.push('/settings')">
+                        <i class="pi pi-building"></i>
+                        <span>{{ appStore.workshop.name }}</span>
                     </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-inbox"></i>
-                        <span>Messages</span>
+                    <button type="button" class="layout-topbar-action relative" @click="router.push('/notifications')">
+                        <i class="pi pi-bell"></i>
+                        <span>Notificações ({{ unread }})</span>
                     </button>
-                    <button type="button" class="layout-topbar-action">
-                        <i class="pi pi-user"></i>
-                        <span>Profile</span>
+                    <button type="button" class="layout-topbar-action" @click="logout">
+                        <i class="pi pi-sign-out"></i>
+                        <span>Sair</span>
                     </button>
                 </div>
             </div>
