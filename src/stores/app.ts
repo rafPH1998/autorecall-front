@@ -18,6 +18,7 @@ export interface WorkshopPreferences {
   contactReminders: boolean;
   weeklyReport: boolean;
   defaultReminderDays: number;
+  whatsappTemplate: string;
 }
 
 export const useAppStore = defineStore('app', () => {
@@ -44,6 +45,7 @@ export const useAppStore = defineStore('app', () => {
     contactReminders: true,
     weeklyReport: false,
     defaultReminderDays: 15,
+    whatsappTemplate: 'Olá, {nome}! Sentimos sua falta. Podemos agendar uma revisão para o seu {veiculo}?',
   });
 
   async function bootstrap() {

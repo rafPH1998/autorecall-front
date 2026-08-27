@@ -73,10 +73,14 @@ function logout() {
 
             <div class="layout-topbar-menu hidden lg:block">
                 <div class="layout-topbar-menu-content">
-                    <button type="button" class="layout-topbar-action" @click="router.push('/settings')">
+                    <button v-if="authStore.isAdmin" type="button" class="layout-topbar-action" @click="router.push('/settings')">
                         <i class="pi pi-building"></i>
                         <span>{{ appStore.workshop.name }}</span>
                     </button>
+                    <span v-else class="layout-topbar-action">
+                        <i class="pi pi-building"></i>
+                        <span>{{ appStore.workshop.name }}</span>
+                    </span>
                     <button type="button" class="layout-topbar-action relative" @click="router.push('/notifications')">
                         <i class="pi pi-bell"></i>
                         <span>Notificações ({{ unread }})</span>

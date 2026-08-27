@@ -13,7 +13,7 @@ withDefaults(
 
 <template>
   <div class="card mb-0 h-full">
-    <div class="flex justify-between mb-4">
+    <div class="flex justify-between" :class="{ 'mb-4': detail }">
       <div>
         <span class="block text-muted-color font-medium mb-3">{{ label }}</span>
         <div class="text-surface-900 dark:text-surface-0 font-semibold text-2xl">{{ value }}</div>
@@ -31,6 +31,6 @@ withDefaults(
         <i :class="[icon, 'text-xl!']" />
       </div>
     </div>
-    <span class="text-muted-color">{{ detail }}</span>
+    <span v-if="detail" class="text-muted-color">{{ detail }}</span>
   </div>
 </template>

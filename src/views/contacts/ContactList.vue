@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PageHeader from '@/components/app/PageHeader.vue';
+import { api } from '@/services/api';
 import { useAppStore } from '@/stores/app';
 import type { Customer } from '@/types/domain';
 import { computed, ref } from 'vue';
@@ -10,7 +11,7 @@ const toast = useToast();
 const search = ref('');
 const onlyWithoutReturn = ref(false);
 const selectedCustomers = ref<Customer[]>([]);
-const message = ref('Olá, {nome}! Sentimos sua falta. Podemos agendar uma revisão para o seu {veiculo}?');
+const message = ref(store.preferences.whatsappTemplate || 'Olá, {nome}! Sentimos sua falta. Podemos agendar uma revisão para o seu {veiculo}?');
 const previewCustomerId = ref<number | null>(store.customers[0]?.id ?? null);
 
 const lastContactByCustomer = computed(() => {
@@ -63,20 +64,29 @@ async function send(customer: Customer) {
 }
 
 async function sendSelected() {
-  const [first, ...rest] = selectedCustomers.value;
-  if (!first) return;
-
-  await send(first);
-  for (const customer of rest) {
-    await registerContact(customer);
+  if (!selectedCustomers.value.length) return;
+  const campaign = await api<{
+    customers?: Array<{ name: string; whatsappUrl: string }>;
+  }>('/campaigns', {
+    method: 'POST',
+    body: JSON.stringify({
+      name: `Recuperação ${new Date().toLocaleDateString('pt-BR')}`,
+      months: 6,
+      customerIds: selectedCustomers.value.map((customer) => customer.id),
+      message: message.value,
+    }),
+  });
+  const first = campaign.customers?.[0];
+  if (first?.whatsappUrl) {
+    window.open(first.whatsappUrl, '_blank', 'noopener,noreferrer');
   }
-
+  await store.bootstrap();
   toast.add({
     severity: 'success',
-    summary: 'Contatos registrados',
-    detail: rest.length
-      ? `WhatsApp aberto para ${first.name} e ${rest.length} contato(s) registrado(s).`
-      : `WhatsApp aberto para ${first.name}.`,
+    summary: 'Campanha registrada',
+    detail: first
+      ? `WhatsApp aberto para ${first.name}. Os demais contatos foram gravados.`
+      : 'Campanha criada.',
     life: 4000,
   });
   selectedCustomers.value = [];

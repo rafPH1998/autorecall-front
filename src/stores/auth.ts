@@ -12,9 +12,15 @@ export interface AuthUser {
 
 const SESSION_FLAG = 'autorecall-session';
 
+function isAdminRole(role?: string | null) {
+  const normalized = (role ?? '').trim().toLocaleLowerCase();
+  return normalized === 'administrador' || normalized === 'admin' || normalized === 'owner';
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const user = ref<AuthUser | null>(null);
   const isAuthenticated = computed(() => Boolean(user.value && getToken()));
+  const isAdmin = computed(() => isAdminRole(user.value?.role));
 
   async function hydrate() {
     if (!getToken()) {
@@ -48,5 +54,5 @@ export const useAuthStore = defineStore('auth', () => {
     localStorage.removeItem(SESSION_FLAG);
   }
 
-  return { user, isAuthenticated, hydrate, login, logout };
+  return { user, isAuthenticated, isAdmin, hydrate, login, logout };
 });

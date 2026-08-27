@@ -1,12 +1,20 @@
 <script setup lang="ts">
 import PageHeader from '@/components/app/PageHeader.vue';
 import StatCard from '@/components/app/StatCard.vue';
+import { api } from '@/services/api';
 import { useAppStore } from '@/stores/app';
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 
 const store = useAppStore();
 const startDate = ref<Date | null>(new Date(2026, 0, 1));
 const endDate = ref<Date | null>(new Date(2026, 11, 31));
+const summary = ref({
+  contactedCustomers: 0,
+  returns: 0,
+  appointments: 0,
+  revenue: 0,
+  conversion: 0,
+});
 
 function parseDate(value: string) {
   const [day, month, year] = value.split('/').map(Number);
@@ -18,16 +26,35 @@ function inPeriod(value: string) {
   return (!startDate.value || date >= startDate.value) && (!endDate.value || date <= endDate.value);
 }
 
-const periodContacts = computed(() => store.contacts.filter((item) => inPeriod(item.date)));
+function toQuery(value: Date | null) {
+  return value ? value.toLocaleDateString('pt-BR') : '';
+}
+
 const periodOrders = computed(() => store.orders.filter((item) => inPeriod(item.date)));
-const contactedCustomers = computed(() => new Set(periodContacts.value.map((item) => item.customerId)).size);
-const returns = computed(() => periodContacts.value.filter((item) => !['Aguardando resposta', 'Mensagem visualizada'].includes(item.result)).length);
-const appointments = computed(() => periodContacts.value.filter((item) => item.result.toLocaleLowerCase().includes('agendado')).length);
-const revenue = computed(() => periodOrders.value.filter((item) => item.status === 'Finalizada').reduce((sum, item) => sum + item.total, 0));
+const contactedCustomers = computed(() => summary.value.contactedCustomers);
+const returns = computed(() => summary.value.returns);
+const appointments = computed(() => summary.value.appointments);
+const revenue = computed(() => summary.value.revenue);
+const conversion = computed(() => summary.value.conversion);
 const maxBar = computed(() => Math.max(contactedCustomers.value, returns.value, appointments.value, 1));
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
-const conversion = computed(() => contactedCustomers.value ? Math.round((returns.value / contactedCustomers.value) * 100) : 0);
+
+async function loadReports() {
+  try {
+    const params = new URLSearchParams();
+    const from = toQuery(startDate.value);
+    const to = toQuery(endDate.value);
+    if (from) params.set('from', from);
+    if (to) params.set('to', to);
+    const qs = params.toString();
+    summary.value = await api<typeof summary.value>(`/reports${qs ? `?${qs}` : ''}`);
+  } catch {
+    summary.value = { contactedCustomers: 0, returns: 0, appointments: 0, revenue: 0, conversion: 0 };
+  }
+}
+
+watch([startDate, endDate], loadReports, { immediate: true });
 
 function clearPeriod() {
   startDate.value = null;

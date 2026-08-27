@@ -109,6 +109,7 @@ const router = createRouter({
           path: 'settings',
           name: 'settings',
           component: () => import('@/views/settings/Settings.vue'),
+          meta: { requiresAdmin: true },
         },
       ],
     },
@@ -144,6 +145,7 @@ router.beforeEach((to) => {
     return { name: 'login', query: { redirect: to.fullPath } };
   }
   if (to.meta.guestOnly && auth.isAuthenticated) return { name: 'dashboard' };
+  if (to.meta.requiresAdmin && !auth.isAdmin) return { name: 'dashboard' };
   return true;
 });
 
