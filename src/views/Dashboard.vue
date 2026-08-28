@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import OnboardingChecklist from '@/components/app/OnboardingChecklist.vue';
 import PageHeader from '@/components/app/PageHeader.vue';
 import StatCard from '@/components/app/StatCard.vue';
 import { api } from '@/services/api';
@@ -154,6 +155,8 @@ onMounted(async () => {
         <Button label="Abrir OS" icon="pi pi-plus" @click="go('/orders/new')" />
       </template>
     </PageHeader>
+
+    <OnboardingChecklist />
 
     <div class="grid grid-cols-12 gap-4 mb-6">
       <div class="col-span-12 sm:col-span-6 xl:col-span-3 cursor-pointer" @click="go('/maintenance')">
