@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PageHeader from '@/components/app/PageHeader.vue';
+import QuickPlateOrder from '@/components/app/QuickPlateOrder.vue';
 import StatusTag from '@/components/app/StatusTag.vue';
 import { useAppStore } from '@/stores/app';
 import type { OrderStatus } from '@/types/domain';
@@ -37,7 +38,10 @@ const orders = computed(() => {
 
 <template>
   <PageHeader title="Ordens de serviço" description="Acompanhe atendimentos, períodos e situações.">
-    <template #actions><Button label="Nova OS" icon="pi pi-plus" @click="router.push({ name: 'order-new' })" /></template>
+    <template #actions>
+      <QuickPlateOrder />
+      <Button label="Nova OS" icon="pi pi-plus" @click="router.push({ name: 'order-new' })" />
+    </template>
   </PageHeader>
   <div class="card">
     <div class="grid grid-cols-1 gap-3 mb-5 md:grid-cols-3">

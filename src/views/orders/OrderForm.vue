@@ -22,19 +22,20 @@ const serviceOptions = computed(() => store.services.filter((item) => item.activ
 const total = computed(() => items.reduce((sum, item) => sum + item.quantity * item.unitPrice, 0));
 const valid = computed(() => Boolean(customerId.value && vehicleId.value && mileage.value >= 0 && items.length && items.every((item) => item.serviceId && item.quantity > 0)));
 
-watch(customerId, () => {
-  vehicleId.value = null;
+watch(customerId, (_id, previous) => {
+  if (previous) vehicleId.value = null;
 });
 
 onMounted(() => {
-  const fromQuery = Number(route.query.customerId);
-  if (fromQuery) {
-    customerId.value = fromQuery;
-    const vehicle = store.vehicles.find((item) => item.customerId === fromQuery);
-    if (vehicle) {
-      vehicleId.value = vehicle.id;
-      mileage.value = vehicle.mileage;
-    }
+  const fromCustomer = Number(route.query.customerId);
+  const fromVehicle = Number(route.query.vehicleId);
+  if (fromCustomer) customerId.value = fromCustomer;
+  const vehicle = fromVehicle
+    ? store.vehicles.find((item) => item.id === fromVehicle)
+    : store.vehicles.find((item) => item.customerId === fromCustomer);
+  if (vehicle) {
+    vehicleId.value = vehicle.id;
+    mileage.value = vehicle.mileage;
   }
 });
 

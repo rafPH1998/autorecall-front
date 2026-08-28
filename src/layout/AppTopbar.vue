@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import QuickPlateOrder from '@/components/app/QuickPlateOrder.vue';
 import { useLayout } from '@/layout/composables/layout';
 import { useAppStore } from '@/stores/app';
 import { useAuthStore } from '@/stores/auth';
@@ -48,6 +49,7 @@ function logout() {
         </div>
 
         <div class="layout-topbar-actions">
+            <QuickPlateOrder compact />
             <div class="layout-config-menu">
                 <button type="button" class="layout-topbar-action" @click="toggleDarkMode">
                     <i :class="['pi', { 'pi-moon': isDarkTheme, 'pi-sun': !isDarkTheme }]"></i>

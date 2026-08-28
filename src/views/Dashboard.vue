@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import OnboardingChecklist from '@/components/app/OnboardingChecklist.vue';
 import PageHeader from '@/components/app/PageHeader.vue';
+import QuickPlateOrder from '@/components/app/QuickPlateOrder.vue';
 import StatCard from '@/components/app/StatCard.vue';
 import { api } from '@/services/api';
 import { useAppStore } from '@/stores/app';
@@ -152,6 +153,7 @@ onMounted(async () => {
   <div>
     <PageHeader title="Hoje" :description="store.workshop.name">
       <template #actions>
+        <QuickPlateOrder />
         <Button label="Abrir OS" icon="pi pi-plus" @click="go('/orders/new')" />
       </template>
     </PageHeader>
