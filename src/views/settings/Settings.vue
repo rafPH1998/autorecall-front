@@ -176,6 +176,16 @@ async function save() {
           <Textarea id="whatsapp-template" v-model="preferences.whatsappTemplate" rows="3" class="w-full" />
           <small class="text-muted-color">{{ 'Variáveis: {nome} {veiculo} {placa} {servico}' }}</small>
         </div>
+        <div class="col-span-12">
+          <label for="review-url" class="block font-medium mb-2">Link de avaliação</label>
+          <InputText id="review-url" v-model="preferences.reviewUrl" class="w-full" placeholder="https://g.page/r/..." />
+          <small class="text-muted-color">Se estiver vazio, o pós-venda manda só o agradecimento.</small>
+        </div>
+        <div class="col-span-12">
+          <label for="aftercare-template" class="block font-medium mb-2">Modelo de pós-venda</label>
+          <Textarea id="aftercare-template" v-model="preferences.aftercareTemplate" rows="3" class="w-full" />
+          <small class="text-muted-color">{{ 'Variáveis: {nome} {veiculo} {placa} {servico} {proxima} {avaliacao} {os}' }}</small>
+        </div>
       </div>
     </div>
   </fieldset>

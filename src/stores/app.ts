@@ -19,6 +19,8 @@ export interface WorkshopPreferences {
   weeklyReport: boolean;
   defaultReminderDays: number;
   whatsappTemplate: string;
+  reviewUrl: string;
+  aftercareTemplate: string;
 }
 
 export const useAppStore = defineStore('app', () => {
@@ -46,6 +48,8 @@ export const useAppStore = defineStore('app', () => {
     weeklyReport: false,
     defaultReminderDays: 15,
     whatsappTemplate: 'Olá, {nome}! Sentimos sua falta. Podemos agendar uma revisão para o seu {veiculo}?',
+    reviewUrl: '',
+    aftercareTemplate: 'Olá, {nome}! Obrigado por trazer o {veiculo} ({placa}). A próxima manutenção está prevista para {proxima}.{avaliacao}',
   });
 
   async function bootstrap() {
@@ -129,7 +133,9 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function finishOrder(id: number) {
-    const saved = await api<ServiceOrder>(`/orders/${id}/finish`, { method: 'POST' });
+    const saved = await api<ServiceOrder & {
+      aftercare?: { contactId: number; message: string; whatsappUrl: string | null };
+    }>(`/orders/${id}/finish`, { method: 'POST' });
     const index = orders.value.findIndex((item) => item.id === id);
     if (index >= 0) orders.value[index] = saved;
     await bootstrap();

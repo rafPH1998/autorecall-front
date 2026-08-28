@@ -27,8 +27,20 @@ function finish() {
     acceptLabel: 'Finalizar',
     accept: async () => {
       try {
-        await store.finishOrder(id.value);
+        const saved = await store.finishOrder(id.value);
         toast.add({ severity: 'success', summary: 'OS finalizada', detail: 'O atendimento foi concluído.', life: 3000 });
+        if (saved.aftercare?.whatsappUrl) {
+          confirm.require({
+            header: 'Agradecer no WhatsApp',
+            message: saved.aftercare.message,
+            icon: 'pi pi-whatsapp',
+            rejectLabel: 'Agora não',
+            acceptLabel: 'Abrir WhatsApp',
+            accept: () => {
+              window.open(saved.aftercare!.whatsappUrl!, '_blank', 'noopener,noreferrer');
+            },
+          });
+        }
       } catch (error) {
         toast.add({ severity: 'error', summary: 'Erro ao finalizar', detail: error instanceof Error ? error.message : 'Tente novamente.', life: 4000 });
       }
