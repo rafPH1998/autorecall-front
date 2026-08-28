@@ -2,11 +2,12 @@
 import PageHeader from '@/components/app/PageHeader.vue';
 import { useAppStore } from '@/stores/app';
 import type { ServiceOrderItem } from '@/types/domain';
-import { computed, reactive, ref, watch } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 
 const store = useAppStore();
+const route = useRoute();
 const router = useRouter();
 const toast = useToast();
 const submitted = ref(false);
@@ -23,6 +24,18 @@ const valid = computed(() => Boolean(customerId.value && vehicleId.value && mile
 
 watch(customerId, () => {
   vehicleId.value = null;
+});
+
+onMounted(() => {
+  const fromQuery = Number(route.query.customerId);
+  if (fromQuery) {
+    customerId.value = fromQuery;
+    const vehicle = store.vehicles.find((item) => item.customerId === fromQuery);
+    if (vehicle) {
+      vehicleId.value = vehicle.id;
+      mileage.value = vehicle.mileage;
+    }
+  }
 });
 
 function addItem() {

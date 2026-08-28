@@ -5,9 +5,13 @@ import { api } from '@/services/api';
 import { useAppStore } from '@/stores/app';
 import type { Customer } from '@/types/domain';
 import { computed, ref } from 'vue';
+import { useRouter } from 'vue-router';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 
 const store = useAppStore();
+const router = useRouter();
+const confirm = useConfirm();
 const toast = useToast();
 const search = ref('');
 const onlyWithoutReturn = ref(false);
@@ -97,10 +101,26 @@ function customerName(customerId: number) {
   return store.customers.find((item) => item.id === customerId)?.name ?? 'Cliente removido';
 }
 
-async function changeResult(contactId: number, result: string) {
+function suggestOpenOrder(customerId: number) {
+  confirm.require({
+    header: 'Abrir ordem de serviço',
+    message: 'O cliente veio fazer o serviço. Deseja abrir a OS agora?',
+    icon: 'pi pi-file',
+    rejectLabel: 'Agora não',
+    acceptLabel: 'Abrir OS',
+    accept: () => {
+      router.push({ name: 'order-new', query: { customerId: String(customerId) } });
+    },
+  });
+}
+
+async function changeResult(contactId: number, result: string, customerId: number) {
   try {
     await store.updateContactResult(contactId, result);
     toast.add({ severity: 'success', summary: 'Desfecho atualizado', detail: result, life: 2500 });
+    if (result === 'Veio fazer o serviço') {
+      suggestOpenOrder(customerId);
+    }
   } catch (error) {
     toast.add({
       severity: 'error',
@@ -199,7 +219,7 @@ async function changeResult(contactId: number, result: string) {
             :model-value="data.result"
             :options="contactResultOptions(data.result)"
             class="w-full"
-            @update:model-value="(value) => changeResult(data.id, value)"
+            @update:model-value="(value) => changeResult(data.id, value, data.customerId)"
           />
         </template>
       </Column>

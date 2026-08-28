@@ -5,10 +5,12 @@ import { contactResultOptions } from '@/constants/contacts';
 import { useAppStore } from '@/stores/app';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 
 const store = useAppStore();
 const toast = useToast();
+const confirm = useConfirm();
 const route = useRoute();
 const router = useRouter();
 const id = computed(() => Number(route.params.id));
@@ -17,10 +19,26 @@ const vehicles = computed(() => store.vehicles.filter((item) => item.customerId 
 const orders = computed(() => store.orders.filter((item) => item.customerId === id.value));
 const contacts = computed(() => store.contacts.filter((item) => item.customerId === id.value));
 
+function suggestOpenOrder(customerId: number) {
+  confirm.require({
+    header: 'Abrir ordem de serviço',
+    message: 'O cliente veio fazer o serviço. Deseja abrir a OS agora?',
+    icon: 'pi pi-file',
+    rejectLabel: 'Agora não',
+    acceptLabel: 'Abrir OS',
+    accept: () => {
+      router.push({ name: 'order-new', query: { customerId: String(customerId) } });
+    },
+  });
+}
+
 async function changeResult(contactId: number, result: string) {
   try {
     await store.updateContactResult(contactId, result);
     toast.add({ severity: 'success', summary: 'Desfecho atualizado', detail: result, life: 2500 });
+    if (result === 'Veio fazer o serviço') {
+      suggestOpenOrder(id.value);
+    }
   } catch (error) {
     toast.add({
       severity: 'error',

@@ -3,6 +3,7 @@ export const CONTACT_RESULTS = [
   'Mensagem visualizada',
   'Sem resposta',
   'Agendado',
+  'Veio fazer o serviço',
   'Não tem interesse',
   'Já fez em outro lugar',
   'Vai pensar',
