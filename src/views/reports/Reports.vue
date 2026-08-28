@@ -14,6 +14,7 @@ const summary = ref({
   appointments: 0,
   revenue: 0,
   conversion: 0,
+  outcomes: {} as Record<string, number>,
 });
 
 function parseDate(value: string) {
@@ -39,6 +40,11 @@ const conversion = computed(() => summary.value.conversion);
 const maxBar = computed(() => Math.max(contactedCustomers.value, returns.value, appointments.value, 1));
 
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+const outcomeRows = computed(() =>
+  Object.entries(summary.value.outcomes || {})
+    .filter(([, count]) => count > 0)
+    .map(([result, count]) => ({ result, count })),
+);
 
 async function loadReports() {
   try {
@@ -50,7 +56,7 @@ async function loadReports() {
     const qs = params.toString();
     summary.value = await api<typeof summary.value>(`/reports${qs ? `?${qs}` : ''}`);
   } catch {
-    summary.value = { contactedCustomers: 0, returns: 0, appointments: 0, revenue: 0, conversion: 0 };
+    summary.value = { contactedCustomers: 0, returns: 0, appointments: 0, revenue: 0, conversion: 0, outcomes: {} };
   }
 }
 
@@ -121,6 +127,18 @@ function clearPeriod() {
           </div>
         </div>
         <div v-else class="py-10 text-center text-muted-color">Nenhuma ordem encontrada.</div>
+      </div>
+    </div>
+
+    <div class="col-span-12">
+      <div class="card">
+        <h2 class="text-xl font-semibold mt-0 mb-4">Desfechos dos contatos</h2>
+        <DataTable v-if="outcomeRows.length" :value="outcomeRows" data-key="result" responsive-layout="scroll">
+          <Column field="result" header="Resultado" />
+          <Column header="Quantidade"><template #body="{ data }"><strong>{{ data.count }}</strong></template></Column>
+          <template #empty><div class="py-6 text-center text-muted-color">Nenhum desfecho no período.</div></template>
+        </DataTable>
+        <div v-else class="py-6 text-center text-muted-color">Nenhum desfecho no período.</div>
       </div>
     </div>
   </div>

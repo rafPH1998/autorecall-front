@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import PageHeader from '@/components/app/PageHeader.vue';
+import { contactResultOptions, isPendingContactResult } from '@/constants/contacts';
 import { api } from '@/services/api';
 import { useAppStore } from '@/stores/app';
 import type { Customer } from '@/types/domain';
@@ -25,7 +26,7 @@ const lastContactByCustomer = computed(() => {
 const customerRows = computed(() =>
   store.customers.filter((customer) => {
     const last = lastContactByCustomer.value.get(customer.id);
-    const matchesReturn = !onlyWithoutReturn.value || !last || ['Aguardando resposta', 'Mensagem visualizada'].includes(last.result);
+    const matchesReturn = !onlyWithoutReturn.value || !last || isPendingContactResult(last.result);
     const term = search.value.toLocaleLowerCase();
     return matchesReturn && [customer.name, customer.phone, customer.email].some((value) => value.toLocaleLowerCase().includes(term));
   }),
@@ -95,10 +96,24 @@ async function sendSelected() {
 function customerName(customerId: number) {
   return store.customers.find((item) => item.id === customerId)?.name ?? 'Cliente removido';
 }
+
+async function changeResult(contactId: number, result: string) {
+  try {
+    await store.updateContactResult(contactId, result);
+    toast.add({ severity: 'success', summary: 'Desfecho atualizado', detail: result, life: 2500 });
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Não foi possível atualizar o desfecho',
+      detail: error instanceof Error ? error.message : 'Tente novamente.',
+      life: 4000,
+    });
+  }
+}
 </script>
 
 <template>
-  <PageHeader title="Contatos" description="Recupere clientes e acompanhe o histórico de conversas." />
+  <PageHeader title="Contatos" description="Recupere clientes, registre o desfecho e acompanhe o histórico." />
 
   <div class="grid grid-cols-12 gap-6">
     <div class="col-span-12 xl:col-span-7">
@@ -178,7 +193,16 @@ function customerName(customerId: number) {
       <Column field="date" header="Data" />
       <Column field="channel" header="Canal" />
       <Column field="message" header="Mensagem" style="min-width: 20rem" />
-      <Column field="result" header="Resultado" />
+      <Column header="Desfecho" style="min-width: 16rem">
+        <template #body="{ data }">
+          <Select
+            :model-value="data.result"
+            :options="contactResultOptions(data.result)"
+            class="w-full"
+            @update:model-value="(value) => changeResult(data.id, value)"
+          />
+        </template>
+      </Column>
       <template #empty><div class="py-6 text-center text-muted-color">Nenhum contato registrado.</div></template>
     </DataTable>
   </div>

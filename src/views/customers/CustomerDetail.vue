@@ -1,11 +1,14 @@
 <script setup lang="ts">
 import PageHeader from '@/components/app/PageHeader.vue';
 import StatusTag from '@/components/app/StatusTag.vue';
+import { contactResultOptions } from '@/constants/contacts';
 import { useAppStore } from '@/stores/app';
 import { computed } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
+import { useToast } from 'primevue/usetoast';
 
 const store = useAppStore();
+const toast = useToast();
 const route = useRoute();
 const router = useRouter();
 const id = computed(() => Number(route.params.id));
@@ -13,6 +16,20 @@ const customer = computed(() => store.customers.find((item) => item.id === id.va
 const vehicles = computed(() => store.vehicles.filter((item) => item.customerId === id.value));
 const orders = computed(() => store.orders.filter((item) => item.customerId === id.value));
 const contacts = computed(() => store.contacts.filter((item) => item.customerId === id.value));
+
+async function changeResult(contactId: number, result: string) {
+  try {
+    await store.updateContactResult(contactId, result);
+    toast.add({ severity: 'success', summary: 'Desfecho atualizado', detail: result, life: 2500 });
+  } catch (error) {
+    toast.add({
+      severity: 'error',
+      summary: 'Não foi possível atualizar o desfecho',
+      detail: error instanceof Error ? error.message : 'Tente novamente.',
+      life: 4000,
+    });
+  }
+}
 </script>
 
 <template>
@@ -66,7 +83,16 @@ const contacts = computed(() => store.contacts.filter((item) => item.customerId 
             <Column field="date" header="Data" />
             <Column field="channel" header="Canal" />
             <Column field="message" header="Mensagem" />
-            <Column field="result" header="Resultado" />
+            <Column header="Desfecho" style="min-width: 16rem">
+              <template #body="{ data }">
+                <Select
+                  :model-value="data.result"
+                  :options="contactResultOptions(data.result)"
+                  class="w-full"
+                  @update:model-value="(value) => changeResult(data.id, value)"
+                />
+              </template>
+            </Column>
             <template #empty>Nenhum contato registrado.</template>
           </DataTable>
         </TabPanel>

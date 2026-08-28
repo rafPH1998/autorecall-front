@@ -142,6 +142,13 @@ export const useAppStore = defineStore('app', () => {
     return saved;
   }
 
+  async function updateContactResult(id: number, result: string) {
+    const saved = await api<Contact>(`/contacts/${id}`, { method: 'PUT', body: JSON.stringify({ result }) });
+    const index = contacts.value.findIndex((item) => item.id === id);
+    if (index >= 0) contacts.value[index] = saved;
+    return saved;
+  }
+
   async function markNotificationRead(id: number) {
     notifications.value = await api<AppNotification[]>(`/notifications/${id}/read`, { method: 'POST' });
   }
@@ -196,6 +203,7 @@ export const useAppStore = defineStore('app', () => {
     addOrder,
     finishOrder,
     addContact,
+    updateContactResult,
     markNotificationRead,
     markAllNotificationsRead,
     saveSettings,
