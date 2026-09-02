@@ -2,14 +2,14 @@
 import PageHeader from '@/components/app/PageHeader.vue';
 import { useAppStore } from '@/stores/app';
 import type { Customer } from '@/types/domain';
+import { useMessage } from 'naive-ui';
 import { computed, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useToast } from 'primevue/usetoast';
 
 const store = useAppStore();
 const route = useRoute();
 const router = useRouter();
-const toast = useToast();
+const message = useMessage();
 const id = computed(() => Number(route.params.id) || undefined);
 const existing = computed(() => store.customers.find((item) => item.id === id.value));
 const submitted = reactive({ value: false });
@@ -31,10 +31,10 @@ async function save() {
   if (!valid.value) return;
   try {
     await store.upsertCustomer({ ...form, id: id.value });
-    toast.add({ severity: 'success', summary: 'Cliente salvo', detail: 'Os dados foram atualizados com sucesso.', life: 3000 });
+    message.success('Os dados foram atualizados com sucesso.');
     router.push({ name: 'customers' });
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro ao salvar', detail: error instanceof Error ? error.message : 'Tente novamente.', life: 4000 });
+    message.error(error instanceof Error ? error.message : 'Tente novamente.');
   }
 }
 </script>
@@ -42,38 +42,46 @@ async function save() {
 <template>
   <PageHeader :title="id ? 'Editar cliente' : 'Novo cliente'" description="Informe os dados de identificação e contato.">
     <template #actions>
-      <Button label="Cancelar" severity="secondary" outlined @click="router.push({ name: 'customers' })" />
-      <Button label="Salvar" icon="pi pi-check" @click="save" />
+      <n-button ghost @click="router.push({ name: 'customers' })">Cancelar</n-button>
+      <n-button type="primary" @click="save">Salvar</n-button>
     </template>
   </PageHeader>
 
-  <Message v-if="id && !existing" severity="error" class="mb-4">Cliente não encontrado.</Message>
-  <div v-else class="card">
+  <n-alert v-if="id && !existing" type="error" class="mb-4">Cliente não encontrado.</n-alert>
+  <n-card v-else>
     <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-      <div class="flex flex-col gap-2 md:col-span-2">
-        <label for="name">Nome completo *</label>
-        <InputText id="name" v-model.trim="form.name" :invalid="submitted.value && !form.name" />
-        <small v-if="submitted.value && !form.name" class="text-red-500">Informe o nome.</small>
-      </div>
-      <div class="flex flex-col gap-2">
-        <label for="document">CPF/CNPJ *</label>
-        <InputText id="document" v-model.trim="form.document" :invalid="submitted.value && !form.document" />
-        <small v-if="submitted.value && !form.document" class="text-red-500">Informe o documento.</small>
-      </div>
-      <div class="flex flex-col gap-2">
-        <label for="email">E-mail</label>
-        <InputText id="email" v-model.trim="form.email" type="email" :invalid="submitted.value && !emailValid" />
-        <small v-if="submitted.value && !emailValid" class="text-red-500">Informe um e-mail válido.</small>
-      </div>
-      <div class="flex flex-col gap-2">
-        <label for="phone">Telefone *</label>
-        <InputText id="phone" v-model.trim="form.phone" :invalid="submitted.value && !form.phone" />
-        <small v-if="submitted.value && !form.phone" class="text-red-500">Informe o telefone.</small>
-      </div>
-      <div class="flex flex-col gap-2">
-        <label for="whatsapp">WhatsApp</label>
-        <InputText id="whatsapp" v-model.trim="form.whatsapp" placeholder="Código do país + DDD + número" />
-      </div>
+      <n-form-item
+        label="Nome completo *"
+        class="md:col-span-2"
+        :validation-status="submitted.value && !form.name ? 'error' : undefined"
+        :feedback="submitted.value && !form.name ? 'Informe o nome.' : undefined"
+      >
+        <n-input id="name" v-model:value.trim="form.name" />
+      </n-form-item>
+      <n-form-item
+        label="CPF/CNPJ *"
+        :validation-status="submitted.value && !form.document ? 'error' : undefined"
+        :feedback="submitted.value && !form.document ? 'Informe o documento.' : undefined"
+      >
+        <n-input id="document" v-model:value.trim="form.document" />
+      </n-form-item>
+      <n-form-item
+        label="E-mail"
+        :validation-status="submitted.value && !emailValid ? 'error' : undefined"
+        :feedback="submitted.value && !emailValid ? 'Informe um e-mail válido.' : undefined"
+      >
+        <n-input id="email" v-model:value.trim="form.email" type="email" />
+      </n-form-item>
+      <n-form-item
+        label="Telefone *"
+        :validation-status="submitted.value && !form.phone ? 'error' : undefined"
+        :feedback="submitted.value && !form.phone ? 'Informe o telefone.' : undefined"
+      >
+        <n-input id="phone" v-model:value.trim="form.phone" />
+      </n-form-item>
+      <n-form-item label="WhatsApp">
+        <n-input id="whatsapp" v-model:value.trim="form.whatsapp" placeholder="Código do país + DDD + número" />
+      </n-form-item>
     </div>
-  </div>
+  </n-card>
 </template>

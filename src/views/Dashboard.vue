@@ -6,13 +6,14 @@ import StatCard from '@/components/app/StatCard.vue';
 import { api } from '@/services/api';
 import { useAppStore } from '@/stores/app';
 import type { Contact } from '@/types/domain';
-import { computed, onMounted, ref } from 'vue';
+import { AlertCircleOutline, CalendarOutline, DocumentTextOutline, LogoWhatsapp, WalletOutline } from '@vicons/ionicons5';
+import { NButton, type DataTableColumns, useMessage } from 'naive-ui';
+import { computed, h, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useToast } from 'primevue/usetoast';
 
 const store = useAppStore();
 const router = useRouter();
-const toast = useToast();
+const message = useMessage();
 const contactingId = ref<string | null>(null);
 const metrics = ref({
   overdueMaintenances: 0,
@@ -21,7 +22,6 @@ const metrics = ref({
   revenueAtRisk: 0,
   unpricedOverdue: 0,
 });
-
 const currency = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
 function parseBrDate(value: string) {
@@ -45,19 +45,13 @@ function todayBr() {
 const overdueMaintenances = computed(() => store.maintenances.filter((item) => item.status === 'Atrasada'));
 const upcomingCount = computed(() => store.maintenances.filter((item) => item.status === 'Próxima').length);
 const openOrders = computed(() => store.orders.filter((item) => item.status !== 'Finalizada' && item.status !== 'Cancelada').length);
-
 const contactedToday = computed(() => {
   const today = todayBr();
-  return new Set(
-    store.contacts
-      .filter((item) => item.channel === 'WhatsApp' && item.date === today)
-      .map((item) => item.customerId),
-  );
+  return new Set(store.contacts.filter((item) => item.channel === 'WhatsApp' && item.date === today).map((item) => item.customerId));
 });
 
 const priorities = computed(() => {
   const overdueIds = new Set(overdueMaintenances.value.map((item) => item.customerId));
-
   const fromMaintenance = overdueMaintenances.value.map((item) => {
     const customer = store.customers.find((c) => c.id === item.customerId);
     const vehicle = store.vehicles.find((v) => v.id === item.vehicleId);
@@ -71,7 +65,6 @@ const priorities = computed(() => {
       when: item.dueDate,
     };
   });
-
   const fromInactivity = store.customers
     .filter((customer) => !overdueIds.has(customer.id) && isInactive(customer.lastVisit))
     .map((customer) => {
@@ -86,7 +79,6 @@ const priorities = computed(() => {
         when: customer.lastVisit,
       };
     });
-
   return [...fromMaintenance, ...fromInactivity].slice(0, 6);
 });
 
@@ -95,40 +87,44 @@ const revenueDetail = computed(() => {
   return `${metrics.value.unpricedOverdue} sem preço no catálogo`;
 });
 
-function go(path: string) {
-  router.push(path);
-}
+type Priority = (typeof priorities.value)[number];
 
-async function contactPriority(row: (typeof priorities.value)[number]) {
+const columns = computed<DataTableColumns<Priority>>(() => [
+  { title: 'Cliente', key: 'name' },
+  { title: 'Veículo / serviço', key: 'detail' },
+  { title: 'Motivo', key: 'reason' },
+  { title: 'Data', key: 'when' },
+  {
+    title: '',
+    key: 'actions',
+    width: 140,
+    render(row) {
+      if (!row.customerId) return null;
+      const already = contactedToday.value.has(row.customerId);
+      return h(NButton, {
+        size: 'small',
+        tertiary: already,
+        type: already ? 'default' : 'success',
+        loading: contactingId.value === row.id,
+        onClick: () => contactPriority(row),
+      }, { default: () => (already ? 'Já avisado' : 'WhatsApp') });
+    },
+  },
+]);
+
+async function contactPriority(row: Priority) {
   if (!row.customerId || contactingId.value) return;
   contactingId.value = row.id;
   try {
     const saved = await api<Contact & { reused?: boolean; whatsappUrl?: string | null }>('/contacts/quick', {
       method: 'POST',
-      body: JSON.stringify({
-        customerId: row.customerId,
-        serviceName: row.serviceName || undefined,
-      }),
+      body: JSON.stringify({ customerId: row.customerId, serviceName: row.serviceName || undefined }),
     });
-    if (!store.contacts.some((item) => item.id === saved.id)) {
-      store.contacts.unshift(saved);
-    }
-    if (saved.whatsappUrl) {
-      window.open(saved.whatsappUrl, '_blank', 'noopener,noreferrer');
-    }
-    toast.add({
-      severity: saved.reused ? 'info' : 'success',
-      summary: saved.reused ? 'Já contatado hoje' : 'WhatsApp aberto',
-      detail: saved.reused ? `${row.name} já recebeu contato hoje.` : `Mensagem pronta para ${row.name}.`,
-      life: 3000,
-    });
+    if (!store.contacts.some((item) => item.id === saved.id)) store.contacts.unshift(saved);
+    if (saved.whatsappUrl) window.open(saved.whatsappUrl, '_blank', 'noopener,noreferrer');
+    message[saved.reused ? 'info' : 'success'](saved.reused ? `${row.name} já recebeu contato hoje.` : `Mensagem pronta para ${row.name}.`);
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Não foi possível contatar',
-      detail: error instanceof Error ? error.message : 'Tente novamente.',
-      life: 4000,
-    });
+    message.error(error instanceof Error ? error.message : 'Tente novamente.');
   } finally {
     contactingId.value = null;
   }
@@ -151,56 +147,39 @@ onMounted(async () => {
 
 <template>
   <div>
-    <PageHeader title="Hoje" :description="store.workshop.name">
+    <PageHeader :description="store.workshop.name">
       <template #actions>
         <QuickPlateOrder />
-        <Button label="Abrir OS" icon="pi pi-plus" @click="go('/orders/new')" />
+        <n-button type="primary" @click="router.push('/orders/new')">Abrir OS</n-button>
       </template>
     </PageHeader>
 
     <OnboardingChecklist />
 
-    <div class="grid grid-cols-12 gap-4 mb-6">
-      <div class="col-span-12 sm:col-span-6 xl:col-span-3 cursor-pointer" @click="go('/maintenance')">
-        <StatCard label="Atrasadas" :value="metrics.overdueMaintenances" icon="pi pi-exclamation-triangle" tone="red" />
-      </div>
-      <div class="col-span-12 sm:col-span-6 xl:col-span-3 cursor-pointer" @click="go('/maintenance')">
-        <StatCard label="Próximas" :value="metrics.upcomingMaintenances" icon="pi pi-calendar" tone="orange" />
-      </div>
-      <div class="col-span-12 sm:col-span-6 xl:col-span-3 cursor-pointer" @click="go('/orders')">
-        <StatCard label="OS em aberto" :value="metrics.openOrders" icon="pi pi-file" tone="blue" />
-      </div>
-      <div class="col-span-12 sm:col-span-6 xl:col-span-3 cursor-pointer" @click="go('/maintenance')">
-        <StatCard label="Receita em risco" :value="currency.format(metrics.revenueAtRisk)" icon="pi pi-wallet" tone="green" :detail="revenueDetail" />
-      </div>
-    </div>
+    <n-grid cols="1 s:2 l:4" responsive="screen" :x-gap="16" :y-gap="16" class="mb-5">
+      <n-grid-item class="cursor-pointer" @click="router.push('/maintenance')">
+        <StatCard label="Atrasadas" :value="metrics.overdueMaintenances" :icon="AlertCircleOutline" tone="red" />
+      </n-grid-item>
+      <n-grid-item class="cursor-pointer" @click="router.push('/maintenance')">
+        <StatCard label="Próximas" :value="metrics.upcomingMaintenances" :icon="CalendarOutline" tone="orange" />
+      </n-grid-item>
+      <n-grid-item class="cursor-pointer" @click="router.push('/orders')">
+        <StatCard label="OS em aberto" :value="metrics.openOrders" :icon="DocumentTextOutline" tone="blue" />
+      </n-grid-item>
+      <n-grid-item class="cursor-pointer" @click="router.push('/maintenance')">
+        <StatCard label="Receita em risco" :value="currency.format(metrics.revenueAtRisk)" :icon="WalletOutline" tone="green" :detail="revenueDetail" />
+      </n-grid-item>
+    </n-grid>
 
-    <div class="card mb-0">
-      <div class="flex items-center justify-between gap-3 mb-4">
-        <div class="font-semibold text-xl">Prioridades</div>
-        <Button label="Ver contatos" icon="pi pi-whatsapp" size="small" text @click="go('/contacts')" />
+    <n-card>
+      <div class="flex items-center justify-between mb-4">
+        <div class="font-semibold text-lg">Prioridades</div>
+        <n-button text @click="router.push('/contacts')">
+          <template #icon><n-icon :component="LogoWhatsapp" /></template>
+          Ver contatos
+        </n-button>
       </div>
-      <DataTable :value="priorities" dataKey="id" stripedRows responsiveLayout="scroll" class="text-sm">
-        <Column field="name" header="Cliente" />
-        <Column field="detail" header="Veículo / serviço" />
-        <Column field="reason" header="Motivo" />
-        <Column field="when" header="Data" />
-        <Column header="" style="width: 9rem">
-          <template #body="{ data }">
-            <Button
-              v-if="data.customerId"
-              :label="contactedToday.has(data.customerId) ? 'Já avisado' : 'WhatsApp'"
-              icon="pi pi-whatsapp"
-              size="small"
-              :text="contactedToday.has(data.customerId)"
-              :outlined="!contactedToday.has(data.customerId)"
-              :loading="contactingId === data.id"
-              @click="contactPriority(data)"
-            />
-          </template>
-        </Column>
-        <template #empty>Nada pendente no momento.</template>
-      </DataTable>
-    </div>
+      <n-data-table :columns="columns" :data="priorities" :bordered="false" :pagination="false" />
+    </n-card>
   </div>
 </template>

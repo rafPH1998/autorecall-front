@@ -2,15 +2,15 @@
 import { api, ApiError } from '@/services/api';
 import { useAppStore } from '@/stores/app';
 import type { Customer, Vehicle } from '@/types/domain';
+import { CarSportOutline } from '@vicons/ionicons5';
+import { useMessage } from 'naive-ui';
 import { reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useToast } from 'primevue/usetoast';
 
 const props = withDefaults(defineProps<{ compact?: boolean }>(), { compact: false });
-
 const store = useAppStore();
 const router = useRouter();
-const toast = useToast();
+const message = useMessage();
 const visible = ref(false);
 const searching = ref(false);
 const creating = ref(false);
@@ -42,18 +42,11 @@ function reset() {
 }
 
 function goToOrder(customer: Customer, vehicle: Vehicle) {
-  if (!store.customers.some((item) => item.id === customer.id)) {
-    store.customers.push(customer);
-  }
-  if (!store.vehicles.some((item) => item.id === vehicle.id)) {
-    store.vehicles.push(vehicle);
-  }
+  if (!store.customers.some((item) => item.id === customer.id)) store.customers.push(customer);
+  if (!store.vehicles.some((item) => item.id === vehicle.id)) store.vehicles.push(vehicle);
   visible.value = false;
   reset();
-  router.push({
-    name: 'order-new',
-    query: { customerId: String(customer.id), vehicleId: String(vehicle.id) },
-  });
+  router.push({ name: 'order-new', query: { customerId: String(customer.id), vehicleId: String(vehicle.id) } });
 }
 
 async function searchPlate() {
@@ -63,24 +56,14 @@ async function searchPlate() {
   notFound.value = false;
   try {
     const found = await api<{ customer: Customer; vehicle: Vehicle }>(`/vehicles/lookup?plate=${encodeURIComponent(value)}`);
-    toast.add({
-      severity: 'success',
-      summary: found.vehicle.plate,
-      detail: `${found.customer.name} · ${found.vehicle.brand} ${found.vehicle.model}`,
-      life: 2500,
-    });
+    message.success(`${found.vehicle.plate} · ${found.customer.name}`);
     goToOrder(found.customer, found.vehicle);
   } catch (error) {
     if (error instanceof ApiError && error.status === 404) {
       notFound.value = true;
       return;
     }
-    toast.add({
-      severity: 'error',
-      summary: 'Não foi possível buscar a placa',
-      detail: error instanceof Error ? error.message : 'Tente novamente.',
-      life: 4000,
-    });
+    message.error(error instanceof Error ? error.message : 'Não foi possível buscar a placa');
   } finally {
     searching.value = false;
   }
@@ -91,24 +74,11 @@ async function createWalkIn() {
   try {
     const saved = await api<{ customer: Customer; vehicle: Vehicle }>('/customers/walk-in', {
       method: 'POST',
-      body: JSON.stringify({
-        name: form.name,
-        phone: form.phone,
-        plate: plate.value,
-        brand: form.brand,
-        model: form.model,
-        year: form.year,
-        mileage: form.mileage,
-      }),
+      body: JSON.stringify({ ...form, plate: plate.value }),
     });
     goToOrder(saved.customer, saved.vehicle);
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Não foi possível cadastrar',
-      detail: error instanceof Error ? error.message : 'Tente novamente.',
-      life: 4000,
-    });
+    message.error(error instanceof Error ? error.message : 'Não foi possível cadastrar');
   } finally {
     creating.value = false;
   }
@@ -118,69 +88,52 @@ defineExpose({ open });
 </script>
 
 <template>
-  <Button
-    :label="props.compact ? undefined : 'OS por placa'"
-    icon="pi pi-car"
-    :text="props.compact"
-    :rounded="props.compact"
-    :outlined="!props.compact"
-    aria-label="Abrir OS pela placa"
-    @click="open"
-  />
-  <Dialog v-model:visible="visible" header="Abrir OS pela placa" modal class="w-full max-w-lg" @hide="reset">
-    <div class="flex flex-col gap-4">
-      <div>
-        <label for="quick-plate" class="block font-medium mb-2">Placa</label>
-        <div class="flex gap-2">
-          <InputText
-            id="quick-plate"
-            v-model="plate"
-            class="w-full uppercase"
-            placeholder="BRA2E19"
-            @keyup.enter="searchPlate"
-          />
-          <Button label="Buscar" icon="pi pi-search" :loading="searching" :disabled="!plate.trim()" @click="searchPlate" />
-        </div>
-      </div>
-      <Message v-if="notFound" severity="warn">
-        Placa não cadastrada. Preencha o mínimo e siga para a OS.
-      </Message>
-      <div v-if="notFound" class="grid grid-cols-1 gap-4 md:grid-cols-2">
-        <div class="md:col-span-2">
-          <label for="walk-name" class="block font-medium mb-2">Cliente</label>
-          <InputText id="walk-name" v-model="form.name" class="w-full" />
-        </div>
-        <div class="md:col-span-2">
-          <label for="walk-phone" class="block font-medium mb-2">Telefone / WhatsApp</label>
-          <InputText id="walk-phone" v-model="form.phone" class="w-full" />
-        </div>
-        <div>
-          <label for="walk-brand" class="block font-medium mb-2">Marca</label>
-          <InputText id="walk-brand" v-model="form.brand" class="w-full" />
-        </div>
-        <div>
-          <label for="walk-model" class="block font-medium mb-2">Modelo</label>
-          <InputText id="walk-model" v-model="form.model" class="w-full" />
-        </div>
-        <div>
-          <label for="walk-year" class="block font-medium mb-2">Ano</label>
-          <InputNumber id="walk-year" v-model="form.year" class="w-full" :min="1950" :max="2100" />
-        </div>
-        <div>
-          <label for="walk-km" class="block font-medium mb-2">KM</label>
-          <InputNumber id="walk-km" v-model="form.mileage" class="w-full" suffix=" km" :min="0" />
-        </div>
-        <div class="md:col-span-2">
-          <Button
-            label="Cadastrar e abrir OS"
-            icon="pi pi-check"
-            class="w-full"
+  <n-button :quaternary="props.compact" :circle="props.compact" :ghost="!props.compact" @click="open">
+    <template #icon><n-icon :component="CarSportOutline" /></template>
+    <span v-if="!props.compact">OS por placa</span>
+  </n-button>
+  <n-modal v-model:show="visible" preset="card" title="Abrir OS pela placa" style="width: min(520px, 94vw)" @after-leave="reset">
+    <n-space vertical :size="16">
+      <n-input-group>
+        <n-input v-model:value="plate" placeholder="BRA2E19" style="text-transform: uppercase" @keyup.enter="searchPlate" />
+        <n-button type="primary" :loading="searching" :disabled="!plate.trim()" @click="searchPlate">Buscar</n-button>
+      </n-input-group>
+      <n-alert v-if="notFound" type="warning">Placa não cadastrada. Preencha o mínimo e siga para a OS.</n-alert>
+      <n-grid v-if="notFound" :cols="2" :x-gap="12" :y-gap="12">
+        <n-grid-item :span="2">
+          <n-form-item label="Cliente" :show-feedback="false">
+            <n-input v-model:value="form.name" />
+          </n-form-item>
+        </n-grid-item>
+        <n-grid-item :span="2">
+          <n-form-item label="Telefone / WhatsApp" :show-feedback="false">
+            <n-input v-model:value="form.phone" />
+          </n-form-item>
+        </n-grid-item>
+        <n-grid-item>
+          <n-form-item label="Marca" :show-feedback="false"><n-input v-model:value="form.brand" /></n-form-item>
+        </n-grid-item>
+        <n-grid-item>
+          <n-form-item label="Modelo" :show-feedback="false"><n-input v-model:value="form.model" /></n-form-item>
+        </n-grid-item>
+        <n-grid-item>
+          <n-form-item label="Ano" :show-feedback="false"><n-input-number v-model:value="form.year" class="w-full" :min="1950" :max="2100" /></n-form-item>
+        </n-grid-item>
+        <n-grid-item>
+          <n-form-item label="KM" :show-feedback="false"><n-input-number v-model:value="form.mileage" class="w-full" :min="0" /></n-form-item>
+        </n-grid-item>
+        <n-grid-item :span="2">
+          <n-button
+            type="primary"
+            block
             :loading="creating"
             :disabled="!form.name.trim() || !form.phone.trim() || !form.brand.trim() || !form.model.trim()"
             @click="createWalkIn"
-          />
-        </div>
-      </div>
-    </div>
-  </Dialog>
+          >
+            Cadastrar e abrir OS
+          </n-button>
+        </n-grid-item>
+      </n-grid>
+    </n-space>
+  </n-modal>
 </template>

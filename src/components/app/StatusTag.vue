@@ -3,15 +3,15 @@ import { computed } from 'vue';
 
 const props = defineProps<{ value: string }>();
 
-const severity = computed(() => {
+const type = computed(() => {
   if (['Finalizada', 'Concluída', 'Ativo', 'Próxima'].includes(props.value)) return 'success';
-  if (['Atrasada', 'Cancelada', 'Inativo'].includes(props.value)) return 'danger';
+  if (['Atrasada', 'Cancelada', 'Inativo'].includes(props.value)) return 'error';
   if (['Em andamento'].includes(props.value)) return 'info';
-  if (['Lida'].includes(props.value)) return 'secondary';
-  return 'warn';
+  if (['Lida'].includes(props.value)) return 'default';
+  return 'warning';
 });
 </script>
 
 <template>
-  <Tag :value="value" :severity="severity" />
+  <n-tag :type="type" size="small" :bordered="false">{{ value }}</n-tag>
 </template>

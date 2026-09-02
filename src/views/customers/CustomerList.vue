@@ -2,12 +2,14 @@
 import PageHeader from '@/components/app/PageHeader.vue';
 import { useAppStore } from '@/stores/app';
 import type { Customer } from '@/types/domain';
-import { computed, ref } from 'vue';
+import { NButton, type DataTableColumns } from 'naive-ui';
+import { computed, h, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const store = useAppStore();
 const router = useRouter();
 const search = ref('');
+const pagination = { pageSize: 10, pageSizes: [5, 10, 20], showSizePicker: true };
 
 const customers = computed(() => {
   const term = search.value.trim().toLocaleLowerCase('pt-BR');
@@ -19,6 +21,29 @@ const customers = computed(() => {
   );
 });
 
+const columns = computed<DataTableColumns<Customer>>(() => [
+  { title: 'Cliente', key: 'name', sorter: 'default' },
+  { title: 'Documento', key: 'document' },
+  { title: 'Telefone', key: 'phone' },
+  { title: 'E-mail', key: 'email' },
+  { title: 'Última visita', key: 'lastVisit', sorter: 'default' },
+  {
+    title: 'Ações',
+    key: 'actions',
+    width: 144,
+    render(row) {
+      return h('div', { class: 'flex gap-1' }, [
+        h(NButton, { text: true, size: 'small', onClick: () => openCustomer(row) }, { default: () => 'Ver' }),
+        h(
+          NButton,
+          { text: true, size: 'small', onClick: () => router.push({ name: 'customer-edit', params: { id: row.id } }) },
+          { default: () => 'Editar' },
+        ),
+      ]);
+    },
+  },
+]);
+
 function openCustomer(customer: Customer) {
   router.push({ name: 'customer-detail', params: { id: customer.id } });
 }
@@ -27,39 +52,22 @@ function openCustomer(customer: Customer) {
 <template>
   <PageHeader title="Clientes" description="Consulte e mantenha os clientes da oficina.">
     <template #actions>
-      <Button label="Novo cliente" icon="pi pi-plus" @click="router.push({ name: 'customer-new' })" />
+      <n-button type="primary" @click="router.push({ name: 'customer-new' })">Novo cliente</n-button>
     </template>
   </PageHeader>
 
-  <div class="card">
+  <n-card>
     <div class="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center sm:justify-between">
-      <IconField class="w-full sm:max-w-md">
-        <InputIcon class="pi pi-search" />
-        <InputText v-model="search" class="w-full" placeholder="Buscar por nome, documento ou contato" />
-      </IconField>
-      <span class="text-muted-color text-sm">{{ customers.length }} cliente(s)</span>
+      <n-input v-model:value="search" class="w-full sm:max-w-md" placeholder="Buscar por nome, documento ou contato" />
+      <span class="muted text-sm">{{ customers.length }} cliente(s)</span>
     </div>
-
-    <DataTable :value="customers" data-key="id" paginator :rows="10" :rows-per-page-options="[5, 10, 20]" striped-rows responsive-layout="scroll">
-      <Column field="name" header="Cliente" sortable />
-      <Column field="document" header="Documento" />
-      <Column field="phone" header="Telefone" />
-      <Column field="email" header="E-mail" />
-      <Column field="lastVisit" header="Última visita" sortable />
-      <Column header="Ações" style="width: 9rem">
-        <template #body="{ data }">
-          <div class="flex gap-1">
-            <Button icon="pi pi-eye" text rounded aria-label="Ver cliente" @click="openCustomer(data)" />
-            <Button icon="pi pi-pencil" text rounded aria-label="Editar cliente" @click="router.push({ name: 'customer-edit', params: { id: data.id } })" />
-          </div>
-        </template>
-      </Column>
-      <template #empty>
-        <div class="py-8 text-center text-muted-color">
-          <i class="pi pi-users text-3xl mb-3 block" />
-          Nenhum cliente encontrado.
-        </div>
-      </template>
-    </DataTable>
-  </div>
+    <n-data-table
+      :columns="columns"
+      :data="customers"
+      :row-key="(row: Customer) => row.id"
+      :bordered="false"
+      striped
+      :pagination="pagination"
+    />
+  </n-card>
 </template>

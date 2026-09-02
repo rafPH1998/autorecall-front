@@ -3,16 +3,15 @@ import PageHeader from '@/components/app/PageHeader.vue';
 import { contactResultOptions, isPendingContactResult } from '@/constants/contacts';
 import { api } from '@/services/api';
 import { useAppStore } from '@/stores/app';
-import type { Customer } from '@/types/domain';
-import { computed, ref } from 'vue';
+import type { Contact, Customer } from '@/types/domain';
+import { NButton, NSelect, type DataTableColumns, useDialog, useMessage } from 'naive-ui';
+import { computed, h, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import { useConfirm } from 'primevue/useconfirm';
-import { useToast } from 'primevue/usetoast';
 
 const store = useAppStore();
 const router = useRouter();
-const confirm = useConfirm();
-const toast = useToast();
+const dialog = useDialog();
+const messageApi = useMessage();
 const search = ref('');
 const onlyWithoutReturn = ref(false);
 const selectedCustomers = ref<Customer[]>([]);
@@ -37,6 +36,16 @@ const customerRows = computed(() =>
 );
 
 const previewCustomer = computed(() => store.customers.find((item) => item.id === previewCustomerId.value) ?? selectedCustomers.value[0]);
+const previewOptions = computed(() => store.customers.map((item) => ({ label: item.name, value: item.id })));
+const selectedKeys = computed(() => selectedCustomers.value.map((item) => item.id));
+
+function onChecked(keys: Array<string | number>) {
+  selectedCustomers.value = customerRows.value.filter((customer) => keys.includes(customer.id));
+}
+
+function resultOptions(current: string) {
+  return contactResultOptions(current).map((value) => ({ label: value, value }));
+}
 
 function renderMessage(customer?: Customer) {
   if (!customer) return message.value;
@@ -86,14 +95,7 @@ async function sendSelected() {
     window.open(first.whatsappUrl, '_blank', 'noopener,noreferrer');
   }
   await store.bootstrap();
-  toast.add({
-    severity: 'success',
-    summary: 'Campanha registrada',
-    detail: first
-      ? `WhatsApp aberto para ${first.name}. Os demais contatos foram gravados.`
-      : 'Campanha criada.',
-    life: 4000,
-  });
+  messageApi.success(first ? `WhatsApp aberto para ${first.name}. Os demais contatos foram gravados.` : 'Campanha criada.');
   selectedCustomers.value = [];
 }
 
@@ -102,13 +104,12 @@ function customerName(customerId: number) {
 }
 
 function suggestOpenOrder(customerId: number) {
-  confirm.require({
-    header: 'Abrir ordem de serviço',
-    message: 'O cliente veio fazer o serviço. Deseja abrir a OS agora?',
-    icon: 'pi pi-file',
-    rejectLabel: 'Agora não',
-    acceptLabel: 'Abrir OS',
-    accept: () => {
+  dialog.warning({
+    title: 'Abrir ordem de serviço',
+    content: 'O cliente veio fazer o serviço. Deseja abrir a OS agora?',
+    positiveText: 'Abrir OS',
+    negativeText: 'Agora não',
+    onPositiveClick: () => {
       router.push({ name: 'order-new', query: { customerId: String(customerId) } });
     },
   });
@@ -117,113 +118,134 @@ function suggestOpenOrder(customerId: number) {
 async function changeResult(contactId: number, result: string, customerId: number) {
   try {
     await store.updateContactResult(contactId, result);
-    toast.add({ severity: 'success', summary: 'Desfecho atualizado', detail: result, life: 2500 });
+    messageApi.success(result);
     if (result === 'Veio fazer o serviço') {
       suggestOpenOrder(customerId);
     }
   } catch (error) {
-    toast.add({
-      severity: 'error',
-      summary: 'Não foi possível atualizar o desfecho',
-      detail: error instanceof Error ? error.message : 'Tente novamente.',
-      life: 4000,
-    });
+    messageApi.error(error instanceof Error ? error.message : 'Tente novamente.');
   }
 }
+
+function customerRowKey(row: Customer) {
+  return row.id;
+}
+
+function contactRowKey(row: Contact) {
+  return row.id;
+}
+
+const customerColumns = computed(() => {
+  const columns: DataTableColumns<Customer> = [
+    { type: 'selection' },
+    {
+      title: 'Cliente',
+      key: 'name',
+      render(row) {
+        return h('div', [
+          h('div', { class: 'font-medium' }, row.name),
+          h('small', { class: 'muted' }, row.phone),
+        ]);
+      },
+    },
+    {
+      title: 'Último contato',
+      key: 'lastContact',
+      render(row) {
+        const last = lastContactByCustomer.value.get(row.id);
+        if (!last) return h('span', { class: 'muted' }, 'Nunca contatado');
+        return h('div', [
+          h('div', last.date),
+          h('small', { class: 'muted' }, last.result),
+        ]);
+      },
+    },
+    {
+      title: 'Ação',
+      key: 'action',
+      width: 120,
+      render(row) {
+        return h(NButton, { size: 'small', text: true, type: 'success', onClick: () => send(row) }, { default: () => 'WhatsApp' });
+      },
+    },
+  ];
+  return columns;
+});
+
+const historyColumns = computed<DataTableColumns<Contact>>(() => [
+  { title: 'Cliente', key: 'customer', render: (row) => customerName(row.customerId) },
+  { title: 'Data', key: 'date' },
+  { title: 'Canal', key: 'channel' },
+  { title: 'Mensagem', key: 'message', minWidth: 280 },
+  {
+    title: 'Desfecho',
+    key: 'result',
+    minWidth: 220,
+    render(row) {
+      return h(NSelect, {
+        value: row.result,
+        options: resultOptions(row.result),
+        onUpdateValue: (value: string) => changeResult(row.id, value, row.customerId),
+      });
+    },
+  },
+]);
 </script>
 
 <template>
-  <PageHeader title="Contatos" description="Recupere clientes, registre o desfecho e acompanhe o histórico." />
+  <PageHeader description="Recupere clientes, registre o desfecho e acompanhe o histórico." />
 
   <div class="grid grid-cols-12 gap-6">
     <div class="col-span-12 xl:col-span-7">
-      <div class="card">
+      <n-card>
         <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between mb-4">
-          <IconField class="w-full md:max-w-sm">
-            <InputIcon class="pi pi-search" />
-            <InputText v-model="search" placeholder="Buscar cliente" class="w-full" />
-          </IconField>
-          <div class="flex items-center gap-2">
-            <Checkbox v-model="onlyWithoutReturn" input-id="without-return" binary />
-            <label for="without-return">Somente sem retorno</label>
-          </div>
+          <n-input v-model:value="search" class="w-full md:max-w-sm" placeholder="Buscar cliente" />
+          <n-checkbox v-model:checked="onlyWithoutReturn">Somente sem retorno</n-checkbox>
         </div>
-
-        <DataTable v-model:selection="selectedCustomers" :value="customerRows" data-key="id" striped-rows paginator :rows="6" responsive-layout="scroll">
-          <Column selection-mode="multiple" header-style="width: 3rem" />
-          <Column header="Cliente">
-            <template #body="{ data }"><div class="font-medium">{{ data.name }}</div><small class="text-muted-color">{{ data.phone }}</small></template>
-          </Column>
-          <Column header="Último contato">
-            <template #body="{ data }">
-              <template v-if="lastContactByCustomer.get(data.id)">
-                <div>{{ lastContactByCustomer.get(data.id)?.date }}</div>
-                <small class="text-muted-color">{{ lastContactByCustomer.get(data.id)?.result }}</small>
-              </template>
-              <span v-else class="text-muted-color">Nunca contatado</span>
-            </template>
-          </Column>
-          <Column header="Ação">
-            <template #body="{ data }"><Button icon="pi pi-whatsapp" severity="success" text rounded aria-label="Enviar WhatsApp" @click="send(data)" /></template>
-          </Column>
-          <template #empty>
-            <div class="py-8 text-center"><i class="pi pi-users text-4xl text-muted-color" /><p class="mt-3 mb-0">Nenhum cliente para contatar.</p></div>
-          </template>
-        </DataTable>
-      </div>
+        <n-data-table
+          :columns="customerColumns"
+          :data="customerRows"
+          :row-key="customerRowKey"
+          :checked-row-keys="selectedKeys"
+          :bordered="false"
+          :pagination="{ pageSize: 6 }"
+          @update:checked-row-keys="onChecked"
+        />
+      </n-card>
     </div>
 
     <div class="col-span-12 xl:col-span-5">
-      <div class="card">
+      <n-card>
         <h2 class="text-xl font-semibold mt-0">Mensagem</h2>
-        <label for="message" class="block font-medium mb-2">Editor</label>
-        <Textarea id="message" v-model="message" rows="6" class="w-full" auto-resize />
+        <n-form-item label="Editor">
+          <n-input v-model:value="message" type="textarea" :rows="6" />
+        </n-form-item>
         <div class="flex flex-wrap gap-2 mt-3">
-          <Button v-for="variable in ['{nome}', '{veiculo}', '{placa}']" :key="variable" :label="variable" size="small" outlined @click="insertVariable(variable)" />
+          <n-button v-for="variable in ['{nome}', '{veiculo}', '{placa}']" :key="variable" size="small" ghost @click="insertVariable(variable)">
+            {{ variable }}
+          </n-button>
         </div>
-
-        <label for="preview-customer" class="block font-medium mt-5 mb-2">Visualizar como</label>
-        <Select
-          id="preview-customer"
-          v-model="previewCustomerId"
-          :options="store.customers"
-          option-label="name"
-          option-value="id"
-          placeholder="Selecione um cliente"
-          class="w-full"
-        />
-        <div class="bg-surface-100 dark:bg-surface-800 rounded-border p-4 mt-3 min-h-24 whitespace-pre-wrap">{{ renderMessage(previewCustomer) }}</div>
-
-        <Button
-          :label="`Abrir WhatsApp (${selectedCustomers.length})`"
-          icon="pi pi-whatsapp"
-          severity="success"
-          class="w-full mt-4"
+        <n-form-item label="Visualizar como" class="mt-5">
+          <n-select v-model:value="previewCustomerId" :options="previewOptions" placeholder="Selecione um cliente" />
+        </n-form-item>
+        <n-card size="small" class="mt-3">
+          <div class="min-h-24 whitespace-pre-wrap">{{ renderMessage(previewCustomer) }}</div>
+        </n-card>
+        <n-button
+          type="success"
+          block
+          class="mt-4"
           :disabled="!selectedCustomers.length || !message.trim()"
           @click="sendSelected"
-        />
-      </div>
+        >
+          Abrir WhatsApp ({{ selectedCustomers.length }})
+        </n-button>
+      </n-card>
     </div>
   </div>
 
-  <div class="card">
+  <n-card class="mt-6">
     <h2 class="text-xl font-semibold mt-0 mb-4">Histórico</h2>
-    <DataTable :value="store.contacts" data-key="id" striped-rows paginator :rows="5" responsive-layout="scroll">
-      <Column header="Cliente"><template #body="{ data }">{{ customerName(data.customerId) }}</template></Column>
-      <Column field="date" header="Data" />
-      <Column field="channel" header="Canal" />
-      <Column field="message" header="Mensagem" style="min-width: 20rem" />
-      <Column header="Desfecho" style="min-width: 16rem">
-        <template #body="{ data }">
-          <Select
-            :model-value="data.result"
-            :options="contactResultOptions(data.result)"
-            class="w-full"
-            @update:model-value="(value) => changeResult(data.id, value, data.customerId)"
-          />
-        </template>
-      </Column>
-      <template #empty><div class="py-6 text-center text-muted-color">Nenhum contato registrado.</div></template>
-    </DataTable>
-  </div>
+    <n-data-table :columns="historyColumns" :data="store.contacts" :row-key="contactRowKey" :bordered="false" :pagination="{ pageSize: 5 }" />
+  </n-card>
 </template>

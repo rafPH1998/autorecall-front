@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { api } from '@/services/api';
+import { CheckmarkCircleOutline, EllipseOutline } from '@vicons/ionicons5';
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
@@ -22,13 +23,7 @@ interface OnboardingStatus {
 const router = useRouter();
 const status = ref<OnboardingStatus | null>(null);
 const busy = ref(false);
-
-const visible = computed(() => {
-  if (!status.value) return false;
-  if (status.value.completed) return false;
-  return true;
-});
-
+const visible = computed(() => Boolean(status.value && !status.value.completed));
 const compact = computed(() => Boolean(status.value?.dismissed));
 
 async function load() {
@@ -52,60 +47,35 @@ async function dismiss(dismissed: boolean) {
 }
 
 onMounted(load);
-
 defineExpose({ reload: load });
 </script>
 
 <template>
-  <div v-if="visible" class="card mb-6">
-    <div class="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between mb-4">
+  <n-card v-if="visible" class="mb-5">
+    <div class="flex items-start justify-between gap-3 mb-4">
       <div>
-        <div class="font-semibold text-xl">Primeiros 15 minutos</div>
-        <p class="text-muted-color mt-1 mb-0">
-          {{ status?.doneCount }}/{{ status?.total }} prontos. Complete para ver o recall funcionando.
-        </p>
+        <div class="font-semibold text-lg">Primeiros 15 minutos</div>
+        <p class="muted m-0 mt-1">{{ status?.doneCount }}/{{ status?.total }} prontos. Complete para ver o recall funcionando.</p>
       </div>
-      <Button
-        v-if="!compact"
-        label="Pular por agora"
-        icon="pi pi-times"
-        text
-        size="small"
-        :loading="busy"
-        @click="dismiss(true)"
-      />
-      <Button
-        v-else
-        label="Continuar configuração"
-        icon="pi pi-list-check"
-        text
-        size="small"
-        :loading="busy"
-        @click="dismiss(false)"
-      />
+      <n-button text :loading="busy" @click="dismiss(!compact)">
+        {{ compact ? 'Continuar configuração' : 'Pular por agora' }}
+      </n-button>
     </div>
-
-    <div v-if="!compact" class="flex flex-col gap-3">
+    <n-space v-if="!compact" vertical :size="10">
       <div
         v-for="step in status?.steps"
         :key="step.key"
-        class="flex items-center justify-between gap-3 rounded-border border border-surface-200 p-3 dark:border-surface-700"
+        class="flex items-center justify-between gap-3 rounded-xl border border-[var(--n-border-color)] px-3 py-3"
       >
         <div class="flex items-start gap-3">
-          <i :class="step.done ? 'pi pi-check-circle text-green-500' : 'pi pi-circle text-muted-color'" class="mt-1" />
+          <n-icon :component="step.done ? CheckmarkCircleOutline : EllipseOutline" :color="step.done ? '#22c55e' : undefined" :size="20" />
           <div>
-            <div class="font-medium" :class="{ 'line-through text-muted-color': step.done }">{{ step.label }}</div>
-            <small class="text-muted-color">{{ step.detail }}</small>
+            <div class="font-medium" :class="{ 'line-through muted': step.done }">{{ step.label }}</div>
+            <div class="muted text-sm">{{ step.detail }}</div>
           </div>
         </div>
-        <Button
-          v-if="!step.done"
-          label="Ir"
-          size="small"
-          outlined
-          @click="router.push(step.to)"
-        />
+        <n-button v-if="!step.done" size="small" ghost @click="router.push(step.to)">Ir</n-button>
       </div>
-    </div>
-  </div>
+    </n-space>
+  </n-card>
 </template>

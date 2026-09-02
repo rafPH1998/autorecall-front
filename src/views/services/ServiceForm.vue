@@ -2,14 +2,14 @@
 import PageHeader from '@/components/app/PageHeader.vue';
 import { useAppStore } from '@/stores/app';
 import type { Service } from '@/types/domain';
+import { useMessage } from 'naive-ui';
 import { computed, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
-import { useToast } from 'primevue/usetoast';
 
 const store = useAppStore();
 const route = useRoute();
 const router = useRouter();
-const toast = useToast();
+const message = useMessage();
 const id = computed(() => Number(route.params.id) || undefined);
 const existing = computed(() => store.services.find((item) => item.id === id.value));
 const submitted = ref(false);
@@ -28,10 +28,10 @@ async function save() {
   if (!valid.value) return;
   try {
     await store.upsertService({ ...form, id: id.value });
-    toast.add({ severity: 'success', summary: 'Serviço salvo', detail: 'O catálogo foi atualizado.', life: 3000 });
+    message.success('O catálogo foi atualizado.');
     router.push({ name: 'services' });
   } catch (error) {
-    toast.add({ severity: 'error', summary: 'Erro ao salvar', detail: error instanceof Error ? error.message : 'Tente novamente.', life: 4000 });
+    message.error(error instanceof Error ? error.message : 'Tente novamente.');
   }
 }
 </script>
@@ -39,24 +39,47 @@ async function save() {
 <template>
   <PageHeader :title="id ? 'Editar serviço' : 'Novo serviço'" description="Configure preço, disponibilidade e recorrência preventiva.">
     <template #actions>
-      <Button label="Cancelar" severity="secondary" outlined @click="router.push({ name: 'services' })" />
-      <Button label="Salvar" icon="pi pi-check" @click="save" />
+      <n-button ghost @click="router.push({ name: 'services' })">Cancelar</n-button>
+      <n-button type="primary" @click="save">Salvar</n-button>
     </template>
   </PageHeader>
-  <Message v-if="id && !existing" severity="error" class="mb-4">Serviço não encontrado.</Message>
-  <div v-else class="card">
+  <n-alert v-if="id && !existing" type="error" class="mb-4">Serviço não encontrado.</n-alert>
+  <n-card v-else>
     <div class="grid grid-cols-1 gap-5 md:grid-cols-2">
-      <div class="flex flex-col gap-2 md:col-span-2"><label for="name">Nome *</label><InputText id="name" v-model.trim="form.name" :invalid="submitted && !form.name" /></div>
-      <div class="flex flex-col gap-2 md:col-span-2"><label for="description">Descrição *</label><Textarea id="description" v-model.trim="form.description" rows="3" auto-resize :invalid="submitted && !form.description" /></div>
-      <div class="flex flex-col gap-2"><label for="price">Preço *</label><InputNumber id="price" v-model="form.price" mode="currency" currency="BRL" locale="pt-BR" :min="0" /></div>
-      <div class="flex items-center gap-3 pt-6"><ToggleSwitch v-model="form.active" input-id="active" /><label for="active">{{ form.active ? 'Serviço ativo' : 'Serviço inativo' }}</label></div>
-      <div class="md:col-span-2 border-t border-surface pt-5">
-        <h2 class="text-lg font-semibold mt-0 mb-1">Regra preventiva</h2>
-        <p class="text-muted-color text-sm mt-0">Informe um ou ambos os limites. Deixe em branco para serviço sem recorrência.</p>
+      <n-form-item
+        label="Nome *"
+        class="md:col-span-2"
+        :validation-status="submitted && !form.name ? 'error' : undefined"
+        :feedback="submitted && !form.name ? 'Informe o nome.' : undefined"
+      >
+        <n-input id="name" v-model:value.trim="form.name" />
+      </n-form-item>
+      <n-form-item
+        label="Descrição *"
+        class="md:col-span-2"
+        :validation-status="submitted && !form.description ? 'error' : undefined"
+        :feedback="submitted && !form.description ? 'Informe a descrição.' : undefined"
+      >
+        <n-input id="description" v-model:value.trim="form.description" type="textarea" :autosize="{ minRows: 3 }" />
+      </n-form-item>
+      <n-form-item label="Preço *">
+        <n-input-number id="price" v-model:value="form.price" class="w-full" :min="0" :precision="2" :show-button="false" />
+      </n-form-item>
+      <div class="flex items-center gap-3 pt-6">
+        <n-switch v-model:value="form.active" />
+        <label>{{ form.active ? 'Serviço ativo' : 'Serviço inativo' }}</label>
       </div>
-      <div class="flex flex-col gap-2"><label for="months">Intervalo em meses</label><InputNumber id="months" v-model="form.intervalMonths" suffix=" meses" :min="1" /></div>
-      <div class="flex flex-col gap-2"><label for="mileage">Intervalo por quilometragem</label><InputNumber id="mileage" v-model="form.intervalMileage" suffix=" km" :min="1" /></div>
+      <div class="md:col-span-2 border-t border-gray-200 pt-5">
+        <h2 class="text-lg font-semibold mt-0 mb-1">Regra preventiva</h2>
+        <p class="muted text-sm mt-0">Informe um ou ambos os limites. Deixe em branco para serviço sem recorrência.</p>
+      </div>
+      <n-form-item label="Intervalo em meses">
+        <n-input-number id="months" v-model:value="form.intervalMonths" class="w-full" :min="1" :show-button="false" clearable />
+      </n-form-item>
+      <n-form-item label="Intervalo por quilometragem">
+        <n-input-number id="mileage" v-model:value="form.intervalMileage" class="w-full" :min="1" :show-button="false" clearable />
+      </n-form-item>
     </div>
-    <Message v-if="submitted && !valid" severity="error" class="mt-5">Preencha nome, descrição e um preço válido.</Message>
-  </div>
+    <n-alert v-if="submitted && !valid" type="error" class="mt-5">Preencha nome, descrição e um preço válido.</n-alert>
+  </n-card>
 </template>

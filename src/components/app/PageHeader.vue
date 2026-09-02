@@ -1,18 +1,18 @@
 <script setup lang="ts">
 defineProps<{
-  title: string;
+  title?: string;
   description?: string;
 }>();
 </script>
 
 <template>
-  <div class="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between mb-6">
+  <div class="page-toolbar">
     <div>
-      <h1 class="text-2xl font-semibold m-0">{{ title }}</h1>
-      <p v-if="description" class="text-muted-color mt-2 mb-0">{{ description }}</p>
+      <h2 v-if="title" class="m-0 text-lg font-semibold">{{ title }}</h2>
+      <p v-if="description" class="muted m-0" :class="{ 'mt-1': title }">{{ description }}</p>
     </div>
-    <div class="flex flex-wrap gap-2">
+    <n-space>
       <slot name="actions" />
-    </div>
+    </n-space>
   </div>
 </template>

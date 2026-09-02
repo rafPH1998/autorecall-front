@@ -2,12 +2,15 @@
 import PageHeader from '@/components/app/PageHeader.vue';
 import StatusTag from '@/components/app/StatusTag.vue';
 import { useAppStore } from '@/stores/app';
-import { computed, ref } from 'vue';
+import type { Service } from '@/types/domain';
+import { NButton, type DataTableColumns } from 'naive-ui';
+import { computed, h, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const store = useAppStore();
 const router = useRouter();
 const search = ref('');
+const pagination = { pageSize: 10 };
 const services = computed(() => {
   const term = search.value.trim().toLocaleLowerCase('pt-BR');
   return term ? store.services.filter((service) => `${service.name} ${service.description}`.toLocaleLowerCase('pt-BR').includes(term)) : store.services;
@@ -16,22 +19,62 @@ const preventiveRule = (months: number | null, mileage: number | null) => {
   const rules = [months ? `${months} meses` : '', mileage ? `${mileage.toLocaleString('pt-BR')} km` : ''].filter(Boolean);
   return rules.length ? rules.join(' ou ') : 'Sem recorrência';
 };
+
+const columns = computed<DataTableColumns<Service>>(() => [
+  { title: 'Serviço', key: 'name', sorter: 'default' },
+  { title: 'Descrição', key: 'description' },
+  {
+    title: 'Preço',
+    key: 'price',
+    sorter: (a, b) => a.price - b.price,
+    render(row) {
+      return row.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    },
+  },
+  {
+    title: 'Regra preventiva',
+    key: 'rule',
+    render(row) {
+      return preventiveRule(row.intervalMonths, row.intervalMileage);
+    },
+  },
+  {
+    title: 'Situação',
+    key: 'active',
+    render(row) {
+      return h(StatusTag, { value: row.active ? 'Ativo' : 'Inativo' });
+    },
+  },
+  {
+    title: 'Ações',
+    key: 'actions',
+    width: 88,
+    render(row) {
+      return h(
+        NButton,
+        { text: true, size: 'small', onClick: () => router.push({ name: 'service-edit', params: { id: row.id } }) },
+        { default: () => 'Editar' },
+      );
+    },
+  },
+]);
 </script>
 
 <template>
   <PageHeader title="Serviços" description="Catálogo de serviços, preços e regras preventivas.">
-    <template #actions><Button label="Novo serviço" icon="pi pi-plus" @click="router.push({ name: 'service-new' })" /></template>
+    <template #actions>
+      <n-button type="primary" @click="router.push({ name: 'service-new' })">Novo serviço</n-button>
+    </template>
   </PageHeader>
-  <div class="card">
-    <IconField class="w-full sm:max-w-md mb-4"><InputIcon class="pi pi-search" /><InputText v-model="search" class="w-full" placeholder="Buscar serviço" /></IconField>
-    <DataTable :value="services" data-key="id" paginator :rows="10" striped-rows responsive-layout="scroll">
-      <Column field="name" header="Serviço" sortable />
-      <Column field="description" header="Descrição" />
-      <Column header="Preço" sortable sort-field="price"><template #body="{ data }">{{ data.price.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }) }}</template></Column>
-      <Column header="Regra preventiva"><template #body="{ data }">{{ preventiveRule(data.intervalMonths, data.intervalMileage) }}</template></Column>
-      <Column header="Situação"><template #body="{ data }"><StatusTag :value="data.active ? 'Ativo' : 'Inativo'" /></template></Column>
-      <Column header="Ações"><template #body="{ data }"><Button icon="pi pi-pencil" text rounded aria-label="Editar serviço" @click="router.push({ name: 'service-edit', params: { id: data.id } })" /></template></Column>
-      <template #empty><div class="py-8 text-center text-muted-color"><i class="pi pi-wrench text-3xl block mb-3" />Nenhum serviço encontrado.</div></template>
-    </DataTable>
-  </div>
+  <n-card>
+    <n-input v-model:value="search" class="w-full sm:max-w-md mb-4" placeholder="Buscar serviço" />
+    <n-data-table
+      :columns="columns"
+      :data="services"
+      :row-key="(row: Service) => row.id"
+      :bordered="false"
+      striped
+      :pagination="pagination"
+    />
+  </n-card>
 </template>

@@ -1,9 +1,11 @@
 <script setup lang="ts">
+import type { Component } from 'vue';
+
 withDefaults(
   defineProps<{
     label: string;
     value: string | number;
-    icon: string;
+    icon: Component;
     detail?: string;
     tone?: 'blue' | 'green' | 'orange' | 'red';
   }>(),
@@ -12,25 +14,16 @@ withDefaults(
 </script>
 
 <template>
-  <div class="card mb-0 h-full">
-    <div class="flex justify-between" :class="{ 'mb-4': detail }">
+  <n-card size="small" hoverable>
+    <div class="flex items-start justify-between gap-3">
       <div>
-        <span class="block text-muted-color font-medium mb-3">{{ label }}</span>
-        <div class="text-surface-900 dark:text-surface-0 font-semibold text-2xl">{{ value }}</div>
+        <div class="muted text-sm mb-2">{{ label }}</div>
+        <div class="text-2xl font-semibold">{{ value }}</div>
+        <div v-if="detail" class="muted text-sm mt-2">{{ detail }}</div>
       </div>
-      <div
-        class="flex items-center justify-center rounded-border"
-        :class="{
-          'bg-blue-100 dark:bg-blue-400/10 text-blue-500': tone === 'blue',
-          'bg-green-100 dark:bg-green-400/10 text-green-500': tone === 'green',
-          'bg-orange-100 dark:bg-orange-400/10 text-orange-500': tone === 'orange',
-          'bg-red-100 dark:bg-red-400/10 text-red-500': tone === 'red',
-        }"
-        style="width: 2.75rem; height: 2.75rem"
-      >
-        <i :class="[icon, 'text-xl!']" />
+      <div class="stat-icon" :class="tone">
+        <n-icon :component="icon" :size="22" />
       </div>
     </div>
-    <span v-if="detail" class="text-muted-color">{{ detail }}</span>
-  </div>
+  </n-card>
 </template>

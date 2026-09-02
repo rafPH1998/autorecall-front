@@ -2,12 +2,15 @@
 import PageHeader from '@/components/app/PageHeader.vue';
 import StatusTag from '@/components/app/StatusTag.vue';
 import { useAppStore } from '@/stores/app';
-import { computed, ref } from 'vue';
+import type { Vehicle } from '@/types/domain';
+import { NButton, type DataTableColumns } from 'naive-ui';
+import { computed, h, ref } from 'vue';
 import { useRouter } from 'vue-router';
 
 const store = useAppStore();
 const router = useRouter();
 const search = ref('');
+const pagination = { pageSize: 10, pageSizes: [5, 10, 20], showSizePicker: true };
 const customerName = (id: number) => store.customers.find((item) => item.id === id)?.name ?? 'Cliente não encontrado';
 const vehicles = computed(() => {
   const term = search.value.trim().toUpperCase();
@@ -15,31 +18,75 @@ const vehicles = computed(() => {
     ? store.vehicles.filter((vehicle) => [vehicle.plate, vehicle.brand, vehicle.model, customerName(vehicle.customerId)].some((value) => value.toUpperCase().includes(term)))
     : store.vehicles;
 });
+
+const columns = computed<DataTableColumns<Vehicle>>(() => [
+  { title: 'Placa', key: 'plate', sorter: 'default' },
+  {
+    title: 'Veículo',
+    key: 'vehicle',
+    render(row) {
+      return `${row.brand} ${row.model} (${row.year})`;
+    },
+  },
+  {
+    title: 'Cliente',
+    key: 'customer',
+    render(row) {
+      return customerName(row.customerId);
+    },
+  },
+  {
+    title: 'Quilometragem',
+    key: 'mileage',
+    render(row) {
+      return `${row.mileage.toLocaleString('pt-BR')} km`;
+    },
+  },
+  { title: 'Próxima manutenção', key: 'nextMaintenance' },
+  {
+    title: 'Status',
+    key: 'maintenanceStatus',
+    render(row) {
+      return h(StatusTag, { value: row.maintenanceStatus });
+    },
+  },
+  {
+    title: 'Ações',
+    key: 'actions',
+    width: 144,
+    render(row) {
+      return h('div', { class: 'flex gap-1' }, [
+        h(
+          NButton,
+          { text: true, size: 'small', onClick: () => router.push({ name: 'vehicle-detail', params: { id: row.id } }) },
+          { default: () => 'Ver' },
+        ),
+        h(
+          NButton,
+          { text: true, size: 'small', onClick: () => router.push({ name: 'vehicle-edit', params: { id: row.id } }) },
+          { default: () => 'Editar' },
+        ),
+      ]);
+    },
+  },
+]);
 </script>
 
 <template>
   <PageHeader title="Veículos" description="Consulte veículos, proprietários e próximas manutenções.">
-    <template #actions><Button label="Novo veículo" icon="pi pi-plus" @click="router.push({ name: 'vehicle-new' })" /></template>
+    <template #actions>
+      <n-button type="primary" @click="router.push({ name: 'vehicle-new' })">Novo veículo</n-button>
+    </template>
   </PageHeader>
-  <div class="card">
-    <IconField class="w-full sm:max-w-md mb-4">
-      <InputIcon class="pi pi-search" />
-      <InputText v-model="search" class="w-full uppercase" placeholder="Buscar por placa, veículo ou cliente" />
-    </IconField>
-    <DataTable :value="vehicles" data-key="id" paginator :rows="10" :rows-per-page-options="[5, 10, 20]" striped-rows responsive-layout="scroll">
-      <Column field="plate" header="Placa" sortable />
-      <Column header="Veículo"><template #body="{ data }">{{ data.brand }} {{ data.model }} ({{ data.year }})</template></Column>
-      <Column header="Cliente"><template #body="{ data }">{{ customerName(data.customerId) }}</template></Column>
-      <Column header="Quilometragem"><template #body="{ data }">{{ data.mileage.toLocaleString('pt-BR') }} km</template></Column>
-      <Column field="nextMaintenance" header="Próxima manutenção" />
-      <Column header="Status"><template #body="{ data }"><StatusTag :value="data.maintenanceStatus" /></template></Column>
-      <Column header="Ações" style="width: 9rem">
-        <template #body="{ data }">
-          <Button icon="pi pi-eye" text rounded aria-label="Ver veículo" @click="router.push({ name: 'vehicle-detail', params: { id: data.id } })" />
-          <Button icon="pi pi-pencil" text rounded aria-label="Editar veículo" @click="router.push({ name: 'vehicle-edit', params: { id: data.id } })" />
-        </template>
-      </Column>
-      <template #empty><div class="py-8 text-center text-muted-color"><i class="pi pi-car text-3xl block mb-3" />Nenhum veículo encontrado.</div></template>
-    </DataTable>
-  </div>
+  <n-card>
+    <n-input v-model:value="search" class="w-full sm:max-w-md mb-4" placeholder="Buscar por placa, veículo ou cliente" />
+    <n-data-table
+      :columns="columns"
+      :data="vehicles"
+      :row-key="(row: Vehicle) => row.id"
+      :bordered="false"
+      striped
+      :pagination="pagination"
+    />
+  </n-card>
 </template>
